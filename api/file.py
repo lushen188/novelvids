@@ -42,7 +42,7 @@ async def get_upload_policy(
     model_config_id: int | None = Query(default=None, ge=1),
     ctx: AuthContext = _EDITOR,
 ):
-    if not oss.enabled:
+    if not (oss.enabled and oss.supports_direct_upload):
         return ResponseSchema(data={"direct": False})
     team_id = ctx.team_id
     if novel_id is not None:

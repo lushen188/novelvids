@@ -33,7 +33,7 @@ class Settings:
     CREATION_AGENT_CHECKPOINT_PATH: str = os.getenv("CREATION_AGENT_CHECKPOINT_PATH", "data/creation_agent_checkpoints.db")
 
     # 应用配置
-    APP_NAME: str = "猫影短剧"
+    APP_NAME: str = "捷元乐AIGC"
     APP_DESC: str = "基于第三方AI模型的短剧/小说生成平台"
     VERSION: str = STUDIO_RELEASE["version"]
     DEBUG: bool = _env_bool("DEBUG", True)
@@ -157,16 +157,23 @@ class Settings:
     SESSION_TTL_HOURS: int = int(os.getenv("SESSION_TTL_HOURS", "168"))
 
     # ---- 对象存储（默认 local：本地磁盘，行为不变） ----
-    OSS_PROVIDER: str = os.getenv("OSS_PROVIDER", "local")  # local | aliyun
+    OSS_PROVIDER: str = os.getenv("OSS_PROVIDER", "local")  # local | aliyun | r2
     OSS_BUCKET: str = os.getenv("OSS_BUCKET", "")
-    # 公网 endpoint（前端直传与公网访问域名拼接），如 oss-cn-beijing.aliyuncs.com
+    # Cloudflare 账户 ID（仅 r2 使用），S3 endpoint 留空时自动推导
+    OSS_ACCOUNT_ID: str = os.getenv("OSS_ACCOUNT_ID", "")
+    # 公网 endpoint（aliyun：oss-cn-beijing.aliyuncs.com；r2：留空则自动推导
+    # 为 https://{account_id}.r2.cloudflarestorage.com）
     OSS_ENDPOINT: str = os.getenv("OSS_ENDPOINT", "")
     # 内网 endpoint（服务端读写用，省流量），如 oss-cn-beijing-internal.aliyuncs.com
     OSS_INTERNAL_ENDPOINT: str = os.getenv("OSS_INTERNAL_ENDPOINT", "")
-    # 公网访问前缀（可选 CDN/自定义域名），留空则用 https://{bucket}.{endpoint}
+    # 公网访问前缀（aliyun 可选 CDN/自定义域名，留空用 https://{bucket}.{endpoint}；
+    # r2 必填：r2.dev 公共子域或自定义域名，供应商经此 URL 拉取素材）
     OSS_PUBLIC_BASE: str = os.getenv("OSS_PUBLIC_BASE", "")
     OSS_ACCESS_KEY_ID: str = os.getenv("OSS_ACCESS_KEY_ID", "")
     OSS_ACCESS_KEY_SECRET: str = os.getenv("OSS_ACCESS_KEY_SECRET", "")
+
+    # ---- 小米 MiMo TTS（自动音色链：VoiceDesign 文本设计音色） ----
+    MIMO_API_KEY: str = os.getenv("MIMO_API_KEY", "")
 
     # Private temporary-object bucket on the platform; the local studio needs only its scoped API key.
     STUDIO_TEMP_BUCKET = os.getenv("STUDIO_TEMP_BUCKET", "")

@@ -1,7 +1,10 @@
 """对象存储抽象层。
 
 - `local`：默认实现，不启用直传，所有存储继续走本地磁盘（行为不变）；
-- `aliyun`：阿里云 OSS，前端直传（POST 表单策略），服务端经内网 endpoint 读写。
+- `aliyun`：阿里云 OSS，前端直传（POST 表单策略），服务端经内网 endpoint 读写；
+- `r2`：Cloudflare R2（S3 兼容，SigV4 签名）。R2 未实现 S3 Presigned POST
+  （实测 501），不支持浏览器直传，所有上传经服务端中转；公网读走 r2.dev
+  子域或自定义域名。
 """
 
 import abc
@@ -31,6 +34,19 @@ class OSSProvider(abc.ABC):
 
     @property
     def enabled(self) -> bool:
+        return False
+
+    @property
+    def supports_direct_upload(self) -> bool:
+        """是否支持浏览器直传（POST 表单策略）。
+
+        阿里云 OSS 支持；Cloudflare R2 未实现 S3 Presigned POST（实测 501），
+        为 False 时上传策略接口返回 ``direct=false``，前端回退为服务端中转上传。
+        """
+        return False
+
+    async def exists(self, key: str) -> bool:
+        """对象是否已存在（内容寻址上传前的去重检查）；默认 False 表示总是重传。"""
         return False
 
     def sign_form_upload(
@@ -132,6 +148,17 @@ def _build_provider() -> OSSProvider:
             public_base=settings.OSS_PUBLIC_BASE,
             access_key_id=settings.OSS_ACCESS_KEY_ID,
             access_key_secret=settings.OSS_ACCESS_KEY_SECRET,
+        )
+    if settings.OSS_PROVIDER == "r2":
+        from services.oss.r2 import R2Provider
+
+        return R2Provider(
+            account_id=settings.OSS_ACCOUNT_ID,
+            bucket=settings.OSS_BUCKET,
+            access_key_id=settings.OSS_ACCESS_KEY_ID,
+            access_key_secret=settings.OSS_ACCESS_KEY_SECRET,
+            public_base=settings.OSS_PUBLIC_BASE,
+            endpoint=settings.OSS_ENDPOINT,
         )
     return LocalProvider()
 
