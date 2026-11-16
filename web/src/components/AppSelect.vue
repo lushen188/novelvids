@@ -7,6 +7,8 @@ import { tr } from '@/i18n'
 export interface AppSelectOption {
   value: string
   label: string
+  /** 分组标题；同组连续选项只渲染一次标题 */
+  group?: string
   image?: string
   separator?: boolean
 }
@@ -224,30 +226,34 @@ onUnmounted(() => {
         <p v-if="menuLabel" class="app-select__menu-label">{{ menuLabel }}</p>
         <input v-if="searchable" v-model="search" class="app-select__search" type="search" :aria-label="tr('搜索{p0}', { p0: ariaLabel })" :placeholder="tr('搜索')" @keydown.enter.prevent @keydown.left.stop @keydown.right.stop @keydown.home.stop @keydown.end.stop />
         <p v-if="!visibleOptions.length" class="app-select__menu-label">{{ tr('无匹配结果') }}</p>
-        <AppButton
-          v-for="option in visibleOptions"
-          :key="option.value"
-          type="button"
-          class="app-select__option"
-          :class="{ 'is-selected': option.value === modelValue, 'has-separator': option.separator }"
-          role="option"
-          tabindex="-1"
-          :aria-selected="option.value === modelValue"
-          @click="selectOption(option)"
-        >
-          <span class="app-select__option-leading">
-            <slot name="option-leading" :option="option">
-              <img v-if="option.image" :src="option.image" alt="" />
-            </slot>
-          </span>
-          <span :title="option.label">{{ option.label }}</span>
-          <Check
-            class="app-select__check"
-            :class="{ 'is-invisible': option.value !== modelValue }"
-            :size="15"
-            aria-hidden="true"
-          />
-        </AppButton>
+        <template v-for="(option, index) in visibleOptions" :key="option.value">
+          <p
+            v-if="option.group && visibleOptions[index - 1]?.group !== option.group"
+            class="app-select__group"
+          >{{ option.group }}</p>
+          <AppButton
+            type="button"
+            class="app-select__option"
+            :class="{ 'is-selected': option.value === modelValue, 'has-separator': option.separator }"
+            role="option"
+            tabindex="-1"
+            :aria-selected="option.value === modelValue"
+            @click="selectOption(option)"
+          >
+            <span class="app-select__option-leading">
+              <slot name="option-leading" :option="option">
+                <img v-if="option.image" :src="option.image" alt="" />
+              </slot>
+            </span>
+            <span :title="option.label">{{ option.label }}</span>
+            <Check
+              class="app-select__check"
+              :class="{ 'is-invisible': option.value !== modelValue }"
+              :size="15"
+              aria-hidden="true"
+            />
+          </AppButton>
+        </template>
       </div>
     </Teleport>
   </div>
@@ -402,6 +408,17 @@ onUnmounted(() => {
   border-top: 1px solid var(--app-border);
   border-radius: 0 0 7px 7px;
 }
+
+.app-select__group {
+  margin: 8px 8px 3px;
+  color: var(--app-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.app-select__group:first-of-type { margin-top: 2px; }
 
 .app-select__check {
   margin-left: auto;

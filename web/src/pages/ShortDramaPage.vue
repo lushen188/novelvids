@@ -30,6 +30,19 @@ interface VisualStyle {
   separator?: boolean
 }
 
+// 风格家族：用于把 30 个风格分组展示，未知 key 按命名规则归类，新增风格无需改代码
+const STYLE_GROUP_ORDER = ['真人影像', '3D 动画', '2D 动画', 'CG 渲染', '风格化'] as const
+
+function styleGroupOf(key: string): string {
+  if (key === 'custom') return '风格化'
+  if (key.startsWith('realistic') || key.includes('liveaction')) return '真人影像'
+  if (key.includes('cg')) return 'CG 渲染'
+  if (key.includes('3d')) return '3D 动画'
+  if (key.includes('2d') || key.includes('anime') || key.includes('manhwa')
+    || key.includes('gongbi') || key.includes('flat')) return '2D 动画'
+  return '风格化'
+}
+
 const aspectRatios = ['16:9', '4:3', '3:4', '9:16', '21:9']
 const resolutions = ['480p', '720p', '1080p', '4k']
 // 本地缩略图与回退列表；后端 /api/config/visual-styles 是风格唯一事实来源
@@ -82,6 +95,20 @@ watch(creating, (pending, _previous, onCleanup) => {
 })
 
 const selectedStyle = computed(() => visualStyles.value.find(item => item.value === styleId.value) ?? visualStyles.value[0])
+const styleOptions = computed(() => {
+  const rank = (key: string) => key === 'custom'
+    ? Number.MAX_SAFE_INTEGER
+    : (STYLE_GROUP_ORDER as readonly string[]).indexOf(styleGroupOf(key))
+  return [...visualStyles.value]
+    .map(item => ({
+      value: item.value,
+      label: item.label,
+      image: item.image,
+      separator: item.separator,
+      group: item.value === 'custom' ? undefined : tr(styleGroupOf(item.value)),
+    }))
+    .sort((left, right) => rank(left.value) - rank(right.value))
+})
 const selectedStoryboardStrategy = computed(() => storyboardStrategies.value.find(
   item => item.key === storyboardStrategy.value,
 ))
@@ -347,10 +374,10 @@ async function resumeImport() {
             class="style-select"
             :ariaLabel="tr('视觉风格')"
             :menu-label="tr('风格')"
-            :menu-width="230"
-            :max-menu-height="404"
+            :menu-width="260"
+            :max-menu-height="440"
             align="end"
-            :options="visualStyles"
+            :options="styleOptions"
           >
             <template #leading="{ option }">
               <img v-if="option.image" class="select-thumbnail" :src="option.image" alt="" />

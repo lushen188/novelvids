@@ -73,5 +73,133 @@
     "label": "3D都市动画",
     "image": "现代都市3D动画电影风格，采用统一精细的三维CG建模与物理材质渲染，整体具有适度艺术化的动画表达和可信的现实空间。人物采用自然成年人头身比例、准确的骨骼与关节结构、具有辨识度的脸型和五官，面部适度风格化但不夸张。皮肤呈现细腻CG材质层次与柔和的次表面散射，发丝分层清晰，服装具有真实织物纹理、厚薄变化、自然褶皱和垂坠重量。城市建筑、室内空间、道路和家具具备真实尺度、结构与透视，玻璃、金属、混凝土、木材、塑料和织物根据各自材质特性呈现合理的粗糙度、反射和细节。使用物理合理的全局光照、环境反弹光、自然阴影与反射，画面层次清晰，色彩现代且统一，细节精致但不堆砌。整体呈现高预算现代都市3D动画电影质感，明确属于三维CG动画，而非真人实拍、Q版卡通、游戏截图或廉价塑料CG。人物、道具和场景保持统一的建模精度、材质标准与渲染语言。",
     "video": "延续原图人物与场景的三维CG动画视觉语言，保持人物模型、脸型、发型、身体比例、服装、道具、环境结构、材质和主色关系一致，不在运动中重新设计角色或场景。角色动作遵循可信的人体动力学，重心转移、关节运动、运动惯性、碰撞与接触反馈清晰，表情、眼神、呼吸和细微姿态自然。发丝、衣物、配饰和环境物件依照重力、风力及接触产生连贯的物理动态。三维场景保持稳定的空间透视与物体尺度，光照、阴影、反射、景深和运动模糊随镜头及物体运动连续变化。镜头严格服从具体分镜指令，不额外强制运镜；动作流畅且具有重量感，渲染风格稳定。避免模型漂移、脸部融化、比例突变、肢体穿模、脚底滑动、材质闪烁和帧间风格变化，保持高品质现代都市3D动画电影质感。"
+  },
+  "flat-design": {
+    "label": "2D扁平插画",
+    "image": "2D扁平设计（Flat Design）：纯色色块填充，无阴影无渐变，几何造型简洁线条，轮廓线均匀清晰，色块对比明快；明快蓝/活力橙/米白/薄荷绿等适中明快色，细节极简无纹理，现代简约插画感，画面平坦无纵深修饰，禁3D与照片感。",
+    "video": "画面保持纯色平涂块面运动，色块整体位移与干脆切换，角色以简洁几何动作表演，线条均匀清晰，无光影明暗变化，转场为色块直切，节奏明快现代。",
+    "label_en": "2D flat illustration",
+    "image_en": "2D flat design: pure color fills with no shadow and no gradient, geometric shapes with simple lines, even crisp outlines and lively color contrast; a moderate bright palette of blue, orange, off-white and mint; minimal detail without texture, modern minimal illustration, flat with no depth treatment, no 3D and no photo feel.",
+    "video_en": "Flat color blocks move as whole shapes with crisp cuts; characters perform simple geometric action; even clear outlines with no light or shading change; transitions are direct color-block cuts; brisk modern rhythm."
+  },
+  "3d-guoman-campus-child": {
+    "label": "3D半写实国漫·幼态校园",
+    "image": "高精度3D半写实国漫CG渲染，清晰描边轮廓线，真实PBR材质，高清布料纹理，BJD人偶精致五官，玻璃感瞳孔暖琥珀瞳；幼态5.5-6头身（写实孩童比例非Q版），圆脸短下巴大杏眼；暖黄色调铁律：暖金/奶油/琥珀主导，天空暖橙粉、月光奶金、阴影暖褐，全画面禁冷色。",
+    "video": "3D半写实国漫CG渲染，描边轮廓清晰稳定，暖金日光延续，人物元气活泼动作，衣料布料自然随动，阴影保持暖褐调，光线按时段渐进变化，节奏明亮。",
+    "label_en": "3D semi-realistic guoman - child campus",
+    "image_en": "High-precision 3D semi-realistic guoman CG render with a clear outline contour, real PBR materials, high-definition cloth texture, refined BJD-doll features and glassy warm amber pupils; childlike 5.5-6 head proportion (realistic child ratio, not chibi), round face with short chin and large almond eyes; warm-gold rule: warm gold, cream and amber dominate, sky in warm orange-pink, moonlight in milky gold, shadows in warm brown, no cool color anywhere.",
+    "video_en": "3D semi-realistic guoman CG render with stable clear outlines, continuing warm-gold daylight, energetic lively child action, cloth moving naturally, shadows kept warm brown, light shifting gradually by time of day, bright rhythm."
+  },
+  "3d-guoman-campus-child-soft": {
+    "label": "3D半写实国漫·幼态软渲染",
+    "image": "高精度3D半写实国漫CG渲染，无轮廓线无描边，纯体积光塑形，明暗柔和过渡无硬边，真实PBR材质，玻璃感瞳孔；幼态5.5-6头身，圆脸大杏眼；暖黄色调铁律：暖金/奶油/琥珀主导，天空暖橙粉、阴影暖褐，全画面禁冷色。",
+    "video": "无描边软渲染运动，体积光塑造形体，明暗柔和过渡，人物动作轻快稚气，暖金光线缓慢流动，全程无冷色，节奏明亮。",
+    "label_en": "3D semi-realistic guoman - child soft",
+    "image_en": "High-precision 3D semi-realistic guoman CG render with no contour line and no outline, pure volumetric-light shaping, soft tonal transition without hard edges, real PBR materials and glassy pupils; childlike 5.5-6 head proportion, round face and large almond eyes; warm-gold rule: warm gold, cream and amber dominate, sky in warm orange-pink, shadows in warm brown, no cool color anywhere.",
+    "video_en": "Soft render motion without outlines, form shaped by volumetric light, soft tonal transitions, light playful child movement, warm-gold light flowing slowly, no cool color throughout, bright rhythm."
+  },
+  "3d-guoman-urban": {
+    "label": "3D半写实国漫·都市",
+    "image": "高精度3D半写实国漫CG渲染，清晰描边，真实PBR材质，高清布料纹理，BJD人偶五官玻璃感瞳孔，6-6.5头身纤细修长；暖黄色调暖色温，禁冷色；都市时尚审美：少年系黑白灰极简底加暗红点缀，少女系糖果色甜酷，成年系通勤休闲。",
+    "video": "暖黄都市光延续，夜景霓虹品红与暖夜灯橙点缀，人物时髦利落的动作，布料随动自然，明快节奏。",
+    "label_en": "3D semi-realistic guoman - urban",
+    "image_en": "High-precision 3D semi-realistic guoman CG render with clear outline, real PBR materials, high-definition cloth texture, BJD-doll features with glassy pupils, 6-6.5 slender head proportion; warm-gold warm color temperature with no cool color; urban fashion taste: boys in minimal black-white-grey with dark red accents, girls in candy-color sweet-cool styling, adults in commute-casual.",
+    "video_en": "Continuing warm-yellow urban light, magenta neon and warm orange street lamps as night accents, stylish crisp character movement, cloth following naturally, brisk rhythm."
+  },
+  "3d-retro-1980s-drama": {
+    "label": "3D复古年代剧",
+    "image": "UE5 3D写实渲染，80年代国产电视剧美学：低饱和泛黄暖调，轻微胶片颗粒，复古胶卷色调，50mm影视镜头感，柔和漫射光无硬阴影；PBR做旧质感——木纹包浆、布料磨损、金属锈迹，阴影保留纹理不死黑，禁现代高清数码锐利感。",
+    "video": "80年代电视剧镜头语言：构图稳重方正，柔和漫射光下人物生活化动作，蒸汽炊烟缓慢升腾，泛黄胶卷色调延续，老物件质感随稳定运镜呈现，节奏温吞有烟火气。",
+    "label_en": "3D retro 1980s drama",
+    "image_en": "UE5 3D realistic render in 1980s Chinese TV drama aesthetics: low-saturation yellowed warm tone, slight film grain, retro stock color, 50mm cine-lens feel, soft diffuse light without hard shadow; PBR aging with wood-grain patina, worn fabric and metal rust, shadows keeping texture without crushing to black; no modern hi-def digital sharpness.",
+    "video_en": "1980s TV drama camera language: steady square composition, everyday action under soft diffuse light, steam and cooking smoke rising slowly, yellowed film tone continued, period props shown with stable movement, slow pacing with everyday warmth."
+  },
+  "90s-anime-retro": {
+    "label": "90年代复古日漫",
+    "image": "90年代日式手绘动画：手绘质感平涂上色，清晰流畅线条，赛璐璐时代简单分层光影，柔和暖调低饱和（50-70%），怀旧治愈胶片感，禁现代数字渲染质感与高饱和荧光色。",
+    "video": "手绘平涂画面做逐帧动画式运动，线条稳定，色块随动作整体移动，光影简单两层明暗，怀旧暖调延续，动作节奏舒缓怀旧。",
+    "label_en": "90s retro anime",
+    "image_en": "1990s Japanese hand-drawn animation: hand-painted flat coloring, clear fluid lines, simple two-layer cel shading of the era, soft warm low saturation (50-70%), nostalgic healing film feel; no modern digital render texture and no high-saturation fluorescent color.",
+    "video_en": "Hand-painted flat frames animated frame by frame, stable lines, color blocks moving with the action, simple two-layer shading, nostalgic warm tone continued, gentle retro pacing."
+  },
+  "elegant-european-liveaction": {
+    "label": "欧美优雅真人影像",
+    "image": "真人写实摄影，欧美高端质感：立体骨相深邃眼眸，皮肤自然纹理，高级面料光泽垂坠（丝绒/羊绒/丝绸），金属皮革真实反光，电影侧光勾勒面部骨骼层次，勃艮第红/墨绿/午夜蓝/香槟金奢华暗色盘，大面积窗光混暖灯。",
+    "video": "电影级真人表演，侧光立体感随动作变化，丝绒皮革反光流动，吊灯烛光暖光摇曳，克制优雅的肢体节奏，暗部保留层次。",
+    "label_en": "Elegant European live-action",
+    "image_en": "Live-action photography with high-end European texture: three-dimensional bone structure and deep eyes, natural skin texture, premium fabric sheen and drape (velvet, cashmere, silk), believable metal and leather reflection, cinematic side light carving facial structure, burgundy / forest green / midnight blue / champagne luxury dark palette, large window light mixed with warm lamps.",
+    "video_en": "Cinematic live-action performance, side-light dimensionality changing with movement, velvet and leather reflections flowing, chandelier and candle warmth flickering, restrained elegant body rhythm, shadows retaining detail."
+  },
+  "american-highschool-liveaction": {
+    "label": "美式青春校园真人影像",
+    "image": "真人写实摄影，美式高中青春质感：金色斜照走廊、百叶窗条纹光影、木地板反光、储物柜金属凹陷、校服面料自然褶皱；金阳/丹宁蓝/校徽红/草场绿/校车黄青春色盘，皮肤毛孔真实，禁网红滤镜磨皮与摆拍感。",
+    "video": "手持跟拍青春活力动作，金色日光斜照随镜头移动，球场木地板反光流动，衣料褶皱自然摆动，节奏轻快有呼吸感。",
+    "label_en": "American high-school live-action",
+    "image_en": "Live-action photography with American high-school texture: golden slanted corridor light, venetian-blind stripe shadows, reflective wood floor, dented metal lockers, natural creases in uniform fabric; golden sun / denim blue / school red / field green / school-bus yellow youth palette with real skin pores; no influencer filter smoothing and no posed look.",
+    "video_en": "Handheld tracking with youthful energy, golden daylight slanting and moving with the camera, gym floor reflection flowing, fabric creases swaying naturally, brisk rhythm with breathing room."
+  },
+  "american-family-drama-liveaction": {
+    "label": "美式家庭剧情真人影像",
+    "image": "真人写实摄影，美式家庭剧情质感：皮肤可见岁月痕迹（细纹/雀斑/自然红晕），棉麻面料自然褶皱，不锈钢划痕、木地板踩踏磨损、后院草坪野生感；橡木/鼠尾绿/陶土红/蜂蜜金温馨中产色盘，窗光与台灯暖光混合，自然不摆拍。",
+    "video": "生活化真人表演，窗光在墙面缓慢移动，厨房蒸汽与台灯暖调延续，自然随意的动作节奏，暗部保留层次不压死黑。",
+    "label_en": "American family-drama live-action",
+    "image_en": "Live-action photography with American family-drama texture: skin showing age (fine lines, freckles, natural flush), natural cotton-linen creases, scratched stainless steel, worn wood floor, slightly wild backyard lawn; oak / sage green / terracotta red / honey gold warm middle-class palette, window light mixed with lamp warmth, natural and unposed.",
+    "video_en": "Slice-of-life live-action performance, window light creeping slowly across the wall, kitchen steam and warm lamp continued, natural casual rhythm, shadows retaining detail without crushing."
+  },
+  "donghua-3d-urban-cg": {
+    "label": "国漫3D CG都市",
+    "image": "国漫3D风格化CG，UE5与Octane渲染，风格化PBR材质管线，柔光次表面散射皮肤，去照片化的艺术真实张力，1:7.5真人头身比，细腻克制的艺术化布料纹理，高精度雕刻细节，画面锐度适中，柔和胶片颗粒，都市街头冷暖平衡色彩。",
+    "video": "国漫3D风格化CG运动，皮肤透光自然，风格化光影随人物动作流动，都市冷暖光平衡，胶片颗粒延续，动作利落有电影张力。",
+    "label_en": "Guoman 3D CG urban",
+    "image_en": "Guoman 3D stylized CG, UE5 and Octane render, stylized PBR material pipeline, soft subsurface-scattering skin, de-photographed artistic realism, 1:7.5 realistic head-to-body ratio, delicate restrained stylized cloth texture, high-precision sculpt detail, moderate sharpness, soft film grain, balanced cool-warm urban street color.",
+    "video_en": "Guoman 3D stylized CG motion, natural skin translucency, stylized light flowing with character movement, balanced urban cool-warm light, film grain continued, crisp movement with cinematic tension."
+  },
+  "guofeng-neochic-2d": {
+    "label": "国风二次元新国潮",
+    "image": "国风二次元新国潮：赛璐璐平涂加日式动画渲染，细腻笔触，同色系加深阴影（禁黑色硬阴影），平滑渐变无色块断层；中国传统色加动漫配色，新国潮时尚与古典韵味并存，电影构图，意境深远。",
+    "video": "赛璐璐平涂色块随动作整体移动，线条细腻稳定，衣袂发丝飘逸动态，同色系阴影跟随形体，冷调月光与暖点缀光切换，节奏有电影张力。",
+    "label_en": "Guofeng neochic 2D",
+    "image_en": "Guofeng neochic 2D: cel flat fill with Japanese animation render, fine brushwork, same-hue deepened shadow (no black hard shadow), smooth gradient without banding; traditional Chinese color plus anime palette, new-Chinese-chic fashion alongside classical charm, cinematic composition with lasting mood.",
+    "video_en": "Cel color blocks moving with the action as a whole, fine stable lines, sleeves and hair drifting, same-hue shadows following the form, cool moonlight alternating with warm accent light, cinematic rhythm."
+  },
+  "guofeng-cyber-3d": {
+    "label": "国风赛博3D",
+    "image": "国风赛博3D渲染：中式榫卯、水墨意境、传统纹样与全息光影、机械结构、霓虹光效本土化融合；青绿朱红靛蓝鎏金基底加低饱和中式霓虹（朱砂红霓虹/石青蓝全息/鎏金辉光），杜绝荧光溢色；汉服形制加赛博机能改造，机械鎏金发饰，玉石通透质感；留白对称构图，烟雨体积光与全息投影交织。",
+    "video": "中式霓虹与全息投影光流穿梭，体积光穿透雨雾，水面倒映石青蓝光效，机械部件与织物随动发光，运镜大气流畅，水墨意境与未来都市光影交融。",
+    "label_en": "Guofeng cyber 3D",
+    "image_en": "Guofeng cyber 3D render: Chinese mortise-and-tenon structure, ink-wash mood and traditional patterns fused with holographic light, mechanical structure and localized neon; green-crimson-indigo-gold base with low-saturation Chinese neon (cinnabar red neon, azurite blue hologram, gilded glow) and no fluorescent spill; hanfu silhouette with cyber-tech modification, mechanical gilded hair ornaments, translucent jade; symmetric composition with generous empty space, misty volumetric light interwoven with holograms.",
+    "video_en": "Chinese neon and holographic light streaming, volumetric light piercing rain mist, water reflecting azurite blue, mechanical parts and fabric glowing as they move, grand fluid camera work, ink mood fused with futuristic city light."
+  },
+  "claymation": {
+    "label": "定格黏土动画",
+    "image": "定格动画黏土质感：黏土肌理清晰，手指压痕可见，手工痕迹保留，陶土红/奶油黄暖调，轻微不均匀手工感，复古奇幻场景，柔和暖光层次，禁光滑塑料与现代CG光滑感。",
+    "video": "定格动画式逐帧顿挫运动，黏土角色动作带手工顿挫感，表面肌理随动作微变，暖光稳定，节奏童趣复古。",
+    "label_en": "Stop-motion clay",
+    "image_en": "Stop-motion clay texture: clear clay grain, visible finger impressions, hand-made marks preserved, terracotta red and cream yellow warm palette, slight irregular handcraft feel, retro fantasy set, soft warm light layers; no glossy plastic and no smooth modern CG.",
+    "video_en": "Stop-motion frame-by-frame stepped motion, clay characters moving with hand-made staccato, surface grain shifting slightly with the action, stable warm light, playful retro rhythm."
+  },
+  "minguo-foodwar-liveaction": {
+    "label": "民国市井爽剧真人",
+    "image": "民国市井年代剧真人实拍：35mm胶片颗粒感，真实皮肤质感（毛孔/汗光/灶火熏染），棉麻粗布纹理，木器铜器包浆纸张毛边；土墙暖黄乘老木深褐基底，封条朱红为冲突信号色，靛蓝布衣、银票米白；杜绝塑料感、现代印刷体、电光源。",
+    "video": "灶火为人物主光，火光映脸、蒸汽穿透、油光反亮，锅气升腾时人物半逆光；夜戏灯笼暖橙串光，低谷戏转灰青冷调；体态由含胸到挺直的表演变化，市井群像视线引导舆论，节奏强冲突。",
+    "label_en": "Minguo street-food drama live-action",
+    "image_en": "Minguo-era street drama live-action: 35mm film grain, real skin texture (pores, sweat sheen, stove-fire tint), cotton-linen coarse weave, patina on wood and bronze, frayed paper edges; rammed-earth warm yellow over dark aged wood, seal red as the conflict signal color, indigo cloth and off-white banknotes; no plastic feel, no modern print type, no electric light.",
+    "video_en": "Stove fire as key light on faces, firelight flickering, steam cutting through, oil sheen catching light, wok steam rising with the figure half backlit; night scenes with warm orange lantern strings, low-point scenes shifting to grey-cyan cool; posture growing from hunched to upright, street crowd gaze guiding opinion, strong conflict rhythm."
+  },
+  "liveaction-ancient-china": {
+    "label": "真人古风写实",
+    "image": "真人写实摄影，中国古代题材：五官皮肤发丝极致写实细节，明暗对比强烈，冷中带暖的影视级纪实感；月白/青黛/珠光金/琥珀烛光色盘，女性冷白肤男性暖白肤，刺绣银饰烛光氛围，杜绝现代元素与卡通化。",
+    "video": "影视级真人表演，强对比光影随人物走位变化，烛光灯笼暖光摇曳，纱幔衣袂飘动，先冷后暖的情绪光过渡，节奏克制疏密有致。",
+    "label_en": "Ancient China live-action",
+    "image_en": "Live-action photography of an ancient Chinese subject: extremely realistic features, skin and hair, strong tonal contrast, cool-with-warm cinematic documentary feel; moon white / ink blue / pearl gold / amber candlelight palette, cool white skin for women and warm white for men, embroidered silver and candlelight atmosphere; no modern elements and no cartoonization.",
+    "video_en": "Cinematic live-action performance, high-contrast light changing with blocking, candle and lantern warmth flickering, gauze and sleeves drifting, mood light shifting from cool to warm, restrained rhythm with deliberate pacing."
+  },
+  "liveaction-modern-village": {
+    "label": "新中式乡村真人影像",
+    "image": "真人写实摄影，当代中国乡村（2015-2025）：默认土黄现实轨（黄土褐主导、低饱和、颗粒强、直射日光硬阴影），治愈剧本可切清新田园轨（作物绿主导、空气通透、漫射柔光）；瓷砖自建楼、大棚、快递驿站等现代乡村锚点，皮肤毛孔与日晒肤色真实，有劳作有人气，禁贫困刻板印象与明信片式唯美。",
+    "video": "田野日光偶发性光影，直射硬光下劳作动作真实有力，作物叶片透光，灶火钨丝灯单光源室内戏，颗粒感土黄调延续，节奏质朴克制。",
+    "label_en": "New Chinese rural live-action",
+    "image_en": "Live-action photography of the contemporary Chinese countryside (2015-2025): default earthy realistic track (loess brown dominant, low saturation, strong grain, hard direct-sun shadow), or a fresh pastoral track for healing scripts (crop green dominant, clear air, diffuse soft light); modern rural anchors such as tiled self-built houses, greenhouses and parcel stations, real pores and sun-tanned skin, lived-in and populated; no poverty stereotype and no postcard prettiness.",
+    "video_en": "Intermittent field daylight, real forceful labor action under hard direct sun, crop leaves transmitting light, single-source indoor scenes with stove fire or incandescent bulb, grainy earthy tone continued, plain restrained rhythm."
   }
 }
