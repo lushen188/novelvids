@@ -10,8 +10,10 @@ REFERENCE_OUTPUT_GUARD_EN = "Do not generate text, labels, logos, or watermarks.
 
 REFERENCE_PROMPT_MARKERS_BY_KIND = {
     "person": (
+        "任务：生成角色设定卡",
         "任务：完成角色的上半身正面平视特写",
         "任务：生成同一组角色的群像关系参考图",
+        "Task: Create a character design card",
         "Task: Create an upper-body, front-facing, eye-level close-up",
         "Task: Create an ensemble character relationship reference image",
     ),
