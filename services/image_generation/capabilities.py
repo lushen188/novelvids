@@ -157,8 +157,6 @@ PROTOCOLS: dict[ImageModelTypeEnum, tuple[ImageApiProtocol, ...]] = {
 }
 
 
-PROTOCOLS = {kind: (*protocols, ImageApiProtocol.novelvids) for kind, protocols in PROTOCOLS.items()}
-
 def capabilities_for(model_type: str | ImageModelTypeEnum | None) -> ImageModelCapabilities:
     try:
         return CAPABILITIES[ImageModelTypeEnum(model_type)]

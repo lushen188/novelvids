@@ -86,7 +86,7 @@ async def ai_integration_guide(request: Request):
 @developer_router.get("/llms.txt", include_in_schema=False)
 async def ai_document_index(request: Request):
     base_url = str(request.url).split("?", 1)[0].removesuffix("/llms.txt")
-    return Response(f"# 猫影模型 API\n\n- [AI Agent 接入说明]({base_url}/agent-guide.md)\n- [OpenAPI]({base_url}/openapi.json)\n", media_type="text/plain")
+    return Response(f"# 捷元乐AIGC模型 API\n\n- [AI Agent 接入说明]({base_url}/agent-guide.md)\n- [OpenAPI]({base_url}/openapi.json)\n", media_type="text/plain")
 
 
 @developer_router.get("/models", summary="列出当前平台模型")

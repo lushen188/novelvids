@@ -39,7 +39,7 @@ class WorkSync:
     def __init__(self, allowed_root: Path, media_root: Path, app_url: str = "http://localhost:3000"):
         parsed = urlsplit(app_url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
-            raise ValueError("猫影网页地址必须是无登录信息、查询或片段的 HTTP(S) 地址")
+            raise ValueError("捷元乐AIGC网页地址必须是无登录信息、查询或片段的 HTTP(S) 地址")
         self.ctx = None
         self.app_url = app_url.rstrip("/")
         self.allowed_root = allowed_root
@@ -54,12 +54,12 @@ class WorkSync:
 
     def work_key(self, work):
         if settings.AUTH_ENABLED and self.ctx is None:
-            raise HTTPException(401, "MCP 尚未连接猫影登录会话")
+            raise HTTPException(401, "MCP 尚未连接捷元乐AIGC登录会话")
         return f"t{self.ctx.team_id}:{digest(work)}" if self.ctx else work
 
     def request_key(self, request_id):
         if settings.AUTH_ENABLED and self.ctx is None:
-            raise HTTPException(401, "MCP 尚未连接猫影登录会话")
+            raise HTTPException(401, "MCP 尚未连接捷元乐AIGC登录会话")
         if self.ctx:
             return f"t{self.ctx.team_id}:u{self.ctx.user.id}:{digest(request_id)}"
         return request_id
@@ -370,7 +370,7 @@ class WorkSync:
             current = await objects.recovery_version(target)
             if current != request.base_version:
                 raise SyncConflict('version_conflict', shot_id=request.shot_id, base_version=request.base_version,
-                                   current_version=current, message='猫影内容已修改，请先读取、对比并由用户确认合并，不能自动覆盖')
+                                   current_version=current, message='捷元乐AIGC内容已修改，请先读取、对比并由用户确认合并，不能自动覆盖')
             shot = Shot.model_validate({**row.payload, 'description': target.description or '',
                 'prompt': target.prompt or '', 'duration': target.duration,
                 'structure': target.prompt_params or {},

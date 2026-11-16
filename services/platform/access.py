@@ -56,5 +56,5 @@ async def developer_identity(request: Request) -> AuthContext:
 
 async def studio_identity(request: Request, ctx: AuthContext = Depends(developer_identity)):
     if not await StudioKeyGrant.filter(key_id=request.state.platform_key_id).exists():
-        raise HTTPException(403, "此密钥未授权本地猫影")
+        raise HTTPException(403, "此密钥未授权本地捷元乐AIGC")
     return ctx

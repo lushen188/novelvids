@@ -1,14 +1,12 @@
 
 from utils.messages import localized_message
-import re
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, SecretStr, field_validator
 
 from auth.deps import AuthContext, get_auth_context, require_roles, require_super_admin
 from config import settings
 from controllers.config import ai_model_config_controller, general_config_controller
 from models.config import AiModelConfig
-from services.studio_platform import SYNC_SCOPE, platform_connection_status, sync_platform_models, platform_account
+from services.studio_platform import SYNC_SCOPE
 from schemas.config import (
     AiModelConfigCreate,
     AiModelConfigOut,
@@ -34,7 +32,6 @@ from utils.enums import (
 )
 from utils.page import QueryParams, get_list_params
 from utils.response_format import PaginationResponse, ResponseSchema
-from schemas.platform_billing import PlatformAccountOut
 
 router = APIRouter()
 
@@ -69,55 +66,11 @@ def _mask_official_key(item: AiModelConfigOut, ctx: AuthContext) -> AiModelConfi
     return item
 
 
-class PlatformKeyInput(BaseModel):
-    api_key: SecretStr
-
-    @field_validator("api_key")
-    @classmethod
-    def validate_api_key(cls, value: SecretStr) -> SecretStr:
-        if not re.fullmatch(r"nv_[A-Za-z0-9_-]{1,125}", value.get_secret_value()):
-            raise ValueError("Invalid platform API Key")
-        return value
-
-
 async def require_studio_owner(ctx: AuthContext = Depends(require_super_admin)) -> None:
     if settings.DEPLOYMENT_ROLE != "studio":
         raise HTTPException(404)
     if not ctx.is_super_admin:
         raise HTTPException(403, localized_message("仅超级管理员可执行此操作"))
-
-
-_STUDIO_OWNER = Depends(require_studio_owner)
-
-
-@router.get("/studio-platform", dependencies=[_STUDIO_OWNER])
-async def get_studio_platform(response: Response):
-    response.headers["Cache-Control"] = "no-store"
-    return ResponseSchema(data=await platform_connection_status())
-
-
-@router.get("/studio-platform/account", dependencies=[_STUDIO_OWNER], response_model=ResponseSchema[PlatformAccountOut])
-async def get_platform_account(response: Response):
-    response.headers["Cache-Control"] = "no-store"
-    return ResponseSchema(data=await platform_account())
-
-
-@router.put("/studio-platform", dependencies=[_STUDIO_OWNER])
-async def set_studio_platform(payload: PlatformKeyInput, response: Response):
-    response.headers["Cache-Control"] = "no-store"
-    return ResponseSchema(data=await sync_platform_models(payload.api_key.get_secret_value()))
-
-
-@router.get("/studio-platform/image-tariff/{config_id}", dependencies=[_STUDIO_OWNER])
-async def get_platform_image_tariff(config_id: int):
-    from services.studio_platform import platform_image_tariff
-    return ResponseSchema(data=await platform_image_tariff(config_id))
-
-
-@router.post("/studio-platform/sync", dependencies=[_STUDIO_OWNER])
-async def sync_studio_platform(response: Response):
-    response.headers["Cache-Control"] = "no-store"
-    return ResponseSchema(data=await sync_platform_models())
 
 
 def _serialize_enum(enum_cls) -> list[dict]:

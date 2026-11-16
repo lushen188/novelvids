@@ -12,7 +12,7 @@ from utils.enums import UserStatusEnum
 class ConnectionRequired(ValueError):
     def __init__(self, url: str):
         self.url = url
-        super().__init__("请在猫影确认连接和目标团队，再重试。")
+        super().__init__("请在捷元乐AIGC确认连接和目标团队，再重试。")
 
 
 class LocalMcpAccess:

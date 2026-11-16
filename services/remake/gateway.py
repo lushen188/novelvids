@@ -306,7 +306,7 @@ class RemakeVideoAnalysisGateway:
         from services.oss.studio_client import studio_client
         client = studio_client(team_id, base_url=self.config.base_url, api_key=self.config.api_key)
         if client is None:
-            raise RemakeVideoAnalysisError(localized_message("本地猫影的平台密钥尚未配置"))
+            raise RemakeVideoAnalysisError(localized_message("本地捷元乐AIGC的平台密钥尚未配置"))
         encoded = await asyncio.to_thread(base64.b64encode, data)
         return await client.resolve(f"data:{mime};base64,{encoded.decode('ascii')}")
 

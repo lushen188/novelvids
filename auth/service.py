@@ -1,4 +1,4 @@
-"""猫影用户会话服务。"""
+"""捷元乐AIGC用户会话服务。"""
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 

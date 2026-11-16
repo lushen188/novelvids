@@ -2,7 +2,6 @@
 import { tr } from '@/i18n'
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
 import '@/features/resource-library/dialog.css'
 import {
   Bot,
@@ -14,7 +13,6 @@ import {
   Pencil,
   Plus,
   Power,
-  RefreshCw,
   Server,
   Settings2,
   Trash2,
@@ -26,7 +24,6 @@ import {
 import AppMultiSelect from '@/components/AppMultiSelect.vue'
 import AppIconTile from '@/components/AppIconTile.vue'
 import AppSelect from '@/components/AppSelect.vue'
-import StudioPlatformAccount from '@/components/StudioPlatformAccount.vue'
 import { api } from '@/api'
 import { defaultPricing } from '@/shared/modelPricing'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -98,61 +95,6 @@ const imageModelTypes = ref<ConfigEnumItem[]>([])
 const videoModelTypes = ref<ConfigEnumItem[]>([])
 const loading = ref(true)
 const auth = useAuthStore()
-const platform = computed(() => auth.deploymentRole === 'platform')
-const canConnectPlatform = computed(() => !platform.value && auth.isSuperAdmin)
-const platformConnected = ref(false)
-const platformKeyManagementUrl = ref('')
-const platformKeyRevision = ref(0)
-const platformBusy = ref(false)
-const showPlatformKey = ref(false)
-const showPlatformAccount = ref(false)
-const platformKey = ref('')
-const platformError = ref('')
-let initialLoad: Promise<void> | undefined
-
-async function synchronizePlatform(key?: string, automatic = false) {
-  if (platformBusy.value) return
-  platformBusy.value = true
-  platformError.value = ''
-  try {
-    const { data } = key ? await api.connectStudioPlatform(key) : await api.syncStudioPlatform()
-    platformConnected.value = true
-    if (key) platformKeyRevision.value += 1
-    if (key) {
-      platformKey.value = ''
-      showPlatformKey.value = false
-    }
-    await initialLoad
-    configs.value = (await api.configs()).data.items
-    if (data.unsupported) {
-      const channels = Object.entries(data.unsupported).map(([id, type]) => `${id} (${type})`).join('、')
-      notice.info(tr('已同步 {p0} 个平台模型，当前版本尚不支持：{p1}', { p0: data.synced, p1: channels }))
-    } else if (!automatic) notice.success(tr('已同步 {p0} 个平台模型', { p0: data.synced }))
-  } catch (error) {
-    platformError.value = error instanceof Error ? error.message : tr('平台模型同步失败')
-    if (!automatic && !showPlatformKey.value) notice.error(platformError.value)
-  } finally {
-    platformBusy.value = false
-  }
-}
-
-function closePlatformDialog() {
-  if (platformBusy.value) return
-  showPlatformKey.value = false
-  platformKey.value = ''
-  platformError.value = ''
-}
-
-async function initializePlatform() {
-  try {
-    const { data } = await api.studioPlatform()
-    platformConnected.value = data.connected
-    platformKeyManagementUrl.value = data.key_management_url || ''
-    if (platformConnected.value) await synchronizePlatform(undefined, true)
-  } catch {
-    platformError.value = tr('暂时无法读取平台连接状态')
-  }
-}
 
 // 平台级配置仅超管可见；团队管理员只看到/管理本团队自定义配置
 const isTeamAdmin = computed(() => auth.role === 'admin' && !auth.isSuperAdmin)
@@ -195,7 +137,6 @@ const imageProtocolOptions = computed(() => {
     { value: 'openai_compatible', label: tr('OpenAI 兼容（GPT Image / 中转服务）') },
     { value: 'openrouter_compatible', label: tr('OpenRouter 兼容（/images）') },
     { value: 'volcengine_ark', label: tr('火山方舟 Seedream') },
-    { value: 'novelvids', label: tr('猫影开放平台') },
   ]
   return allowed ? allowed.flatMap(value => options.filter(option => option.value === value)) : options
 })
@@ -285,7 +226,6 @@ function taskLabel(value: number) {
 }
 
 function protocolLabel(value: ImageApiProtocol) {
-  if (value === 'novelvids') return tr('猫影开放平台')
   if (value === 'volcengine_mediakit') return 'AI MediaKit'
   if (value === 'autodl') return 'AutoDL ComfyUI'
   if (value === 'minimax') return tr('MiniMax 官方')
@@ -308,7 +248,6 @@ const videoProtocolOptions = computed(() => {
 })
 const selectedVideoProtocol = computed(() => videoProtocolOptions.value.find(option => option.value === form.value.api_protocol))
 const selectedVideoProtocolHint = computed(() => {
-  if (form.value.api_protocol === 'novelvids') return tr('使用平台的 /v1 地址、视频模型 ID 和 API Key。')
   if (form.value.video_model_type === 'minimax_h3_autodl') {
     return tr('填写 ComfyUI 分组 Token；模型名称填写工作流 ID。支持参考图和音频，不支持参考视频或首尾帧。')
   }
@@ -415,21 +354,6 @@ function openEdit(item: AiModelConfig) {
   showCreate.value = true
 }
 
-async function importPlatformImageTariff() {
-  const id = editingConfigId.value
-  if (!id) return
-  try {
-    const { data } = await api.platformImageTariff(id)
-    if (!showCreate.value || editingConfigId.value !== id) return
-    editedBillingUnit.value = data.billing_unit
-    tierPrices.value = { ...data.prices }
-    inputImagePricing.value = data.input_image ?? { first_free: 0, price_per_image: 0 }
-    discountPricing.value = { discount: data.discount ?? 1, description: data.discount_description ?? '' }
-  } catch (error) {
-    notice.error((error as Error).message)
-  }
-}
-
 function changeImageModelType() {
   if (!imageProtocolOptions.value.some(option => option.value === form.value.api_protocol)) {
     const first = imageProtocolOptions.value[0]
@@ -440,10 +364,6 @@ function changeImageModelType() {
 function changeVideoModelType() {
   if (!form.value.video_model_type) return
   const preset = VIDEO_MODEL_PRESETS[form.value.video_model_type]
-  if (form.value.api_protocol === 'novelvids' && videoProtocolOptions.value.some(option => option.value === form.value.api_protocol)) {
-    applyVideoPricingPreset()
-    return
-  }
   form.value.base_url = preset.baseUrl
   form.value.model = preset.model
   form.value.api_protocol = preset.protocol
@@ -640,8 +560,7 @@ watch(showCreate, async open => {
 
 onMounted(() => {
   window.addEventListener('keydown', onWindowKeydown)
-  initialLoad = load()
-  if (canConnectPlatform.value) void initializePlatform()
+  load()
 })
 onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
 </script>
@@ -655,38 +574,10 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
         <p>{{ tr('统一管理文本、图片、视频与画质增强模型。') }}</p>
       </div>
       <div class="model-header-actions">
-        <AppButton v-if="canConnectPlatform && platformConnected" variant="secondary" size="lg" type="button" aria-haspopup="dialog" @click="showPlatformAccount = true">{{ tr('平台账户') }}</AppButton>
-        <AppButton v-if="canConnectPlatform" variant="secondary" size="lg" type="button" :disabled="platformBusy" aria-haspopup="dialog" @click="showPlatformKey = true"><KeyRound :size="16" />{{ tr(platformConnected ? '更换平台 API Key' : '连接开放平台') }}</AppButton>
-        <AppButton v-if="canConnectPlatform && platformConnected" variant="secondary" size="lg" type="button" :loading="platformBusy" @click="synchronizePlatform()"><RefreshCw :size="16" />{{ tr('同步模型') }}</AppButton>
         <AppButton variant="primary" size="lg" type="button" @click="openCreate()"><Plus :size="16" />{{ tr('添加模型') }}</AppButton>
       </div>
     </header>
 
-    <template v-if="canConnectPlatform">
-      <ElDialog class="resource-library-dialog" :model-value="showPlatformKey"
-        :title="tr(platformConnected ? '更换平台 API Key' : '连接开放平台')" width="min(480px, calc(100vw - 32px))"
-        align-center append-to-body destroy-on-close :show-close="!platformBusy"
-        :close-on-click-modal="!platformBusy" :close-on-press-escape="!platformBusy"
-        @update:model-value="closePlatformDialog">
-        <form class="platform-connection" @submit.prevent="platformKey.trim() && synchronizePlatform(platformKey.trim())">
-          <label for="studio-platform-key">{{ tr('平台 API Key') }}</label>
-          <input id="studio-platform-key" v-model="platformKey" type="password" autocomplete="off" spellcheck="false"
-            maxlength="128" name="platform-api-key" aria-describedby="studio-platform-key-help" required :disabled="platformBusy" />
-          <p id="studio-platform-key-help" class="platform-connection-help">{{ tr('在猫影开放平台登录后，进入「API Keys」，创建用途为「猫影工作台」的密钥，再复制到这里。') }}
-            <a v-if="platformKeyManagementUrl" :href="platformKeyManagementUrl" target="_blank" rel="noopener noreferrer">{{ tr('前往获取 API Key（新窗口）') }}</a>
-          </p>
-          <p v-if="platformError" class="platform-connection-error" role="alert">{{ platformError }}</p>
-          <footer>
-            <AppButton variant="secondary" :disabled="platformBusy" @click="closePlatformDialog">{{ tr('取消') }}</AppButton>
-            <AppButton variant="primary" type="submit" :disabled="!platformKey.trim()" :loading="platformBusy">{{ tr('保存并同步') }}</AppButton>
-          </footer>
-        </form>
-      </ElDialog>
-      <ElDialog v-model="showPlatformAccount" class="resource-library-dialog" :title="tr('平台账户')"
-        width="min(480px, calc(100vw - 32px))" align-center append-to-body destroy-on-close>
-        <StudioPlatformAccount :account-revision="platformKeyRevision" />
-      </ElDialog>
-    </template>
     <section v-if="isTeamAdmin" class="model-source-banner">
       <div class="model-source-copy">
         <strong>{{ configs.length ? tr('本团队已配置 {p0} 个模型', { p0: configs.length }) : tr('尚未配置团队模型') }}</strong>
@@ -753,7 +644,6 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
                 <AppButton variant="danger" size="sm" icon-only type="button" :aria-label="tr('删除配置')" :title="tr('删除配置')" @click="remove(item)"><Trash2 :size="15" /></AppButton>
               </span>
             </template>
-            <AppButton v-else-if="canConnectPlatform && item.scope === 'studio_platform'" variant="secondary" size="sm" @click="openEdit(item)">{{ tr('编辑本地价格') }}</AppButton>
             <span v-else class="official-badge" :title="tr('官方配置由平台维护，团队管理员只读')">{{ tr('只读') }}</span>
           </div>
         </article>
@@ -917,7 +807,6 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
         </section>
         <section v-else-if="selectedCategoryId === 'image' && pricingTierOptions.length" class="pricing-editor">
           <span class="pricing-title">{{ tr('输出图费用（元 / 张）') }}</span>
-          <AppButton v-if="editingSyncedPricing" type="button" variant="secondary" size="sm" @click="importPlatformImageTariff">{{ tr('填入该渠道的平台价') }}</AppButton>
           <div class="pricing-grid">
             <label v-for="tier in pricingTierOptions" :key="tier">
               <span>{{ editedBillingUnit === 'pixel_tier' ? tr(pixelTierLabels[tier] ?? tier) : tr('清晰度') + ' ' + tier }}</span>

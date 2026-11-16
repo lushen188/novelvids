@@ -102,12 +102,12 @@ async def test_import_update_retry_order_and_conflict(tmp_path):
     assert inserted.description == '新插入'
     await video.refresh_from_db()
     assert video.url == '/media/old.mp4'
-    await Scene.filter(id=target.id).update(prompt='猫影手改')
+    await Scene.filter(id=target.id).update(prompt='捷元乐AIGC手改')
     stale = request2.model_copy(update={'request_id': 'stale'})
     with pytest.raises(SyncConflict, match='version_conflict'):
         await service.update_shot(stale)
     await target.refresh_from_db()
-    assert target.prompt == '猫影手改'
+    assert target.prompt == '捷元乐AIGC手改'
     changed_retry = request2.model_copy(update={'changes': {'prompt': '不能改'}})
     with pytest.raises(SyncConflict, match='request_id_reused'):
         await service.update_shot(changed_retry)
@@ -116,7 +116,7 @@ async def test_import_update_retry_order_and_conflict(tmp_path):
     # Archive remains usable after moving away every source file.
     root.rename(tmp_path / 'moved')
     assert (tmp_path / 'archive' / 'work-packages' / url.rsplit('/', 1)[1]).exists()
-    assert (await service.read_episode(ReadEpisode(work_id='mcp-test', episode_id='ep1', shot_id='shot4')))['shots'][0]['prompt'] == '猫影手改'
+    assert (await service.read_episode(ReadEpisode(work_id='mcp-test', episode_id='ep1', shot_id='shot4')))['shots'][0]['prompt'] == '捷元乐AIGC手改'
 
 
 def test_paths_and_reference_validation(tmp_path):
@@ -260,7 +260,7 @@ async def test_assets_variants_voices_and_other_episodes(tmp_path):
     await variant.refresh_from_db()
     assert variant.chapter_numbers == [1, 2]
     assert all(a.source_chapters == [1, 2, 3] for a in await Asset.filter(novel_id=first['novel_id']))
-    await AssetVariant.filter(id=variant.id).update(description='猫影本地形态手改')
+    await AssetVariant.filter(id=variant.id).update(description='捷元乐AIGC本地形态手改')
     manifest.update(episode={'id': 'ep4', 'name': '第四集'}, number=4)
     (root / 'episode.json').write_text(json.dumps(manifest))
     with pytest.raises(SyncConflict, match='variant_changed'):

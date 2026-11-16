@@ -39,11 +39,11 @@ async def setup_call(monkeypatch):
         usage = {"prompt_tokens":1000,"completion_tokens":100,"total_tokens":1100,"prompt_tokens_details":{"cached_tokens":200}}
         if req["stream"]:
             assert req['stream_options']=={'include_usage':True}
-            chunks = [{**envelope,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"猫影"},"finish_reason":"stop"}]},
+            chunks = [{**envelope,"object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"捷元乐AIGC"},"finish_reason":"stop"}]},
                       {**envelope,"object":"chat.completion.chunk","choices":[],"usage":usage}]
             return httpx.Response(200,headers={"Content-Type":"text/event-stream"},text="".join("data: "+json.dumps(c)+"\n\n" for c in chunks)+"data: [DONE]\n\n")
         return httpx.Response(200,json={**envelope,"object":"chat.completion",
-            "choices":[{"index":0,"message":{"role":"assistant","content":"猫影"},"finish_reason":"stop"}],"usage":usage})
+            "choices":[{"index":0,"message":{"role":"assistant","content":"捷元乐AIGC"},"finish_reason":"stop"}],"usage":usage})
     monkeypatch.setattr("services.platform.chat.provider_client",lambda cfg: AsyncOpenAI(base_url=cfg.base_url,api_key=cfg.api_key,
         max_retries=0,http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond))))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url="http://platform") as http:
@@ -64,7 +64,7 @@ async def test_public_chat_routes_selected_model_and_charges_actual_usage_once(s
     if stream:
         assert "data: [DONE]" in reply.text and '"completion_tokens": 100' in reply.text
     else:
-        assert reply.json()["choices"][0]["message"]["content"]=="猫影"
+        assert reply.json()["choices"][0]["message"]["content"]=="捷元乐AIGC"
     duplicate=await http.post("/v1/chat/completions",headers=headers,json=data)
     assert duplicate.status_code==409 and len(sent)==1 and sent[0]["tools"]==data["tools"]
     assert duplicate.headers["X-Request-Id"]==reply.headers["X-Request-Id"]
@@ -147,7 +147,7 @@ async def test_local_sdk_can_stream_with_the_public_base_url(setup_call):
                          http_client=http, max_retries=0)
     reply = await studio.chat.completions.create(model=model, messages=[{"role":"user","content":"test"}], stream=True)
     chunks = [part async for part in reply]
-    assert [c.choices[0].delta.content for c in chunks] == ["猫影"]
+    assert [c.choices[0].delta.content for c in chunks] == ["捷元乐AIGC"]
     assert sent[0]["stream_options"] == {"include_usage":True}
     assert (await PlatformCallReceipt.get()).state == "completed"
 

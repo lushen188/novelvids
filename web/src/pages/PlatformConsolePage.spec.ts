@@ -190,7 +190,7 @@ it('renders keys table with header stats, toolbar filters and row actions', asyn
     }
     return {
       data: [
-        { id: 1, name: '我的本地猫影', preview: 'sk-3a9f12345678', created_at: '2026-11-10T14:20:00Z', purpose: 'studio' },
+        { id: 1, name: '我的本地捷元乐AIGC', preview: 'sk-3a9f12345678', created_at: '2026-11-10T14:20:00Z', purpose: 'studio' },
         { id: 2, name: '前端测试', preview: 'sk-8f2d87654321', created_at: '2026-11-09T18:36:00Z', purpose: 'api' },
       ],
     }
@@ -206,7 +206,7 @@ it('renders keys table with header stats, toolbar filters and row actions', asyn
 
   // Table rows and content
   expect(w.find('.keys-table').exists()).toBe(true)
-  expect(w.text()).toContain('我的本地猫影')
+  expect(w.text()).toContain('我的本地捷元乐AIGC')
   expect(w.text()).toContain('本地捷元乐AIGC')
   expect(w.text()).toContain('前端测试')
   expect(w.text()).toContain('通用 API')
@@ -217,7 +217,7 @@ it('renders keys table with header stats, toolbar filters and row actions', asyn
   await searchInput.setValue('前端测试')
   await flushPromises()
   expect(w.text()).toContain('前端测试')
-  expect(w.text()).not.toContain('我的本地猫影')
+  expect(w.text()).not.toContain('我的本地捷元乐AIGC')
 
   w.unmount()
 })

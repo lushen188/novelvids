@@ -1,6 +1,6 @@
 # 作品包与 MCP 同步 v1
 
-三个技能可独立安装、独立交稿，也可接收已有上游文件。写作与同步分开：用户仅要求创作、修订或交付文件时，不调用写入工具。只有用户明确说同步到猫影，才调用本地 MCP；不要求猫影配置模型或启动创作助手。未连接 MCP 时仍交付文件，不宣称已入库。
+三个技能可独立安装、独立交稿，也可接收已有上游文件。写作与同步分开：用户仅要求创作、修订或交付文件时，不调用写入工具。只有用户明确说同步到捷元乐AIGC，才调用本地 MCP；不要求捷元乐AIGC配置模型或启动创作助手。未连接 MCP 时仍交付文件，不宣称已入库。
 
 ## 文件交接
 
@@ -29,7 +29,7 @@
 }
 ```
 
-新作品在清单中写入用户确认的作品默认 style_key 或 custom_style_prompt，逐镜故事版开关写 storyboard_enabled。局部场次的不同画风保留在相应镜头。续导分集时沿用猫影中已保存的作品设置。
+新作品在清单中写入用户确认的作品默认 style_key 或 custom_style_prompt，逐镜故事版开关写 storyboard_enabled。局部场次的不同画风保留在相应镜头。续导分集时沿用捷元乐AIGC中已保存的作品设置。
 
 ## 视频重制
 
@@ -48,7 +48,7 @@
 
 重制导入保存原视频和已完成的资产、分镜，将本集标记为分镜就绪，不调用模型、不创建拆解任务、不触发扣费。单镜修改仍用 update_shot，可更新 source_range；来源视频不可通过单镜修改替换。只改文字时不需要原视频继续留在包目录。整集重传、替换来源或覆盖已有集不会自动执行。
 
-work、episode、场、镜头、资产、形态均用持久 ID（字母数字、点、短横线、下划线，最长120字符）。首次创建可用 UUID；显示名、数组位置、镜头编号和猫影数据库主键不能当 ID。插镜、改名、改序保留 ID；复制为新作品才新建 ID。同作品跨集复用相同资产/形态 ID；新集导入不会修改已有资产。
+work、episode、场、镜头、资产、形态均用持久 ID（字母数字、点、短横线、下划线，最长120字符）。首次创建可用 UUID；显示名、数组位置、镜头编号和捷元乐AIGC数据库主键不能当 ID。插镜、改名、改序保留 ID；复制为新作品才新建 ID。同作品跨集复用相同资产/形态 ID；新集导入不会修改已有资产。
 
 `assets.json`：顶层 `assets` 数组；每项字段为 `id,name,kind,description,prompt,aliases,variants,media`。kind 只用 person/group/scene/item；prompt 必须符合当前资产协议，完整提示词原样保存。variants 每项为 `id,name,description,prompt,media`，形态 ID 在作品内唯一。media 为 `[{"path":"media/person.png","role":"main"}]`，资产图片用途 main/angle_1/angle_2/reference，其他文件用途 video/audio/blocking。群像用 group，动物用 person。不要添加商品或真人数字人。
 
@@ -87,15 +87,15 @@ visual 与通用提示词的角色、道具、场景参考栏使用同一份出�
 
 工具名：`import_episode`、`read_episode`、`update_shot`。
 
-1. 用户确认整集结果并要求同步后，调用 import_episode：`directory`（绝对目录）、`request_id`（本次操作唯一 ID）、`confirmed:true`。首次导入直接成为猫影作品的一集；不会分析、拆章、调用模型或生成媒体。相同 request_id 与相同内容可重试；已有集禁止整集覆盖。
+1. 用户确认整集结果并要求同步后，调用 import_episode：`directory`（绝对目录）、`request_id`（本次操作唯一 ID）、`confirmed:true`。首次导入直接成为捷元乐AIGC作品的一集；不会分析、拆章、调用模型或生成媒体。相同 request_id 与相同内容可重试；已有集禁止整集覆盖。
 2. 保存返回的 `sync-receipt.json`。回执含 work_id、episode_id、novel_id、chapter_id、workflow_kind、定位路径、各 shot_id、当前顺序、内容版本和媒体归档位置；重制回执还包含 remake_source 的可访问地址、时长、尺寸和校验和。新会话先读取此文件，再调用 read_episode 核对现状；需要详细内容时传 shot_id 单镜读取。重试返回原操作回执；要获取后续编辑后的最新版本，使用 read_episode。
 3. 单镜更新传 `directory,request_id,confirmed:true,work_id,episode_id,shot_id,base_version,changes`。base_version 使用之前读取的版本，不按显示顺序定位。changes 仅填写本次明确修改的 Shot 字段，不能改 id 或直接写数据库主键。
 4. 遇 version_conflict，展示本地与外部修改差异，停下写入并让用户确认合并；不能自动取最新版本强制重试。request_id_reused 表示同 ID 内容改变，应新建操作 ID；相同请求原样重试则返回原回执。插镜与改序不改变该镜的内容版本。
-5. 确认成功回执后才说已同步。媒体已复制到猫影媒体目录；之后移走源媒体仍可读取归档。已有旧视频保持原关联，不覆盖或删除。
+5. 确认成功回执后才说已同步。媒体已复制到捷元乐AIGC媒体目录；之后移走源媒体仍可读取归档。已有旧视频保持原关联，不覆盖或删除。
 
 ## 本地及 PostgreSQL 部署
 
-运行 MCP 的机器必须能访问作品目录、猫影数据库及站点实际使用的媒体目录；支持 SQLite 和 PostgreSQL。外部 Codex/Claude Code 仅装技能不代表已连接 MCP。先启动猫影应用完成数据库初始化，再在同一部署环境运行：
+运行 MCP 的机器必须能访问作品目录、捷元乐AIGC数据库及站点实际使用的媒体目录；支持 SQLite 和 PostgreSQL。外部 Codex/Claude Code 仅装技能不代表已连接 MCP。先启动捷元乐AIGC应用完成数据库初始化，再在同一部署环境运行：
 
 ```sh
 uv run python -m services.local_mcp.server --allow-root /path/to/approved-packages --app-url https://your-studio.example
@@ -103,4 +103,4 @@ uv run python -m services.local_mcp.server --allow-root /path/to/approved-packag
 
 DATABASE_URL、MEDIA_PATH 和 AUTH_ENABLED 使用该部署现有配置。线上 PostgreSQL 应在应用服务器上运行 MCP（可通过 SSH 承载 stdio），并先将用户确认的作品包传到服务器授权目录。directory 使用该机器上的包目录；--app-url 只是浏览器授权及回执链接的站点地址，不会上传本机目录，也不是远程 HTTP 同步地址。不要只把本机 MCP 的数据库连接改为线上地址而继续写本机媒体目录。
 
-登录模式下，首次调用返回猫影连接页；让用户在站点中用已有登录选择团队并确认，再在同一 MCP 进程重试。回执归属该团队，每次操作校验会话及当前成员权限；重新启动 MCP 需要重新确认连接。无需把登录令牌或数据库凭据填入技能或对话。并发导入在数据库中串行确认稳定 ID 与请求 ID；同镜头并发修改只有持有当前版本的一次写入可成功。
+登录模式下，首次调用返回捷元乐AIGC连接页；让用户在站点中用已有登录选择团队并确认，再在同一 MCP 进程重试。回执归属该团队，每次操作校验会话及当前成员权限；重新启动 MCP 需要重新确认连接。无需把登录令牌或数据库凭据填入技能或对话。并发导入在数据库中串行确认稳定 ID 与请求 ID；同镜头并发修改只有持有当前版本的一次写入可成功。

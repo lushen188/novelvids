@@ -28,7 +28,7 @@ def test_stage_exports_without_application_files(tmp_path, name):
     targets = [package / match[2] for match in LINK.finditer(entry)]
     metadata = package / "agents/openai.yaml"
     assert metadata.read_bytes() == (source.parent / "agents/openai.yaml").read_bytes()
-    title = re.search(r'^description: (猫影[^。\n]+)。', entry, re.MULTILINE)[1]
+    title = re.search(r'^description: (捷元乐AIGC[^。\n]+)。', entry, re.MULTILINE)[1]
     assert f'  display_name: "{title}"' in metadata.read_text().splitlines()
     assert targets and set(targets) | {metadata} == {p for p in package.rglob("*") if p.is_file() and p.name not in {"SKILL.md", "LICENSE"}}
     assert (package / "LICENSE").read_bytes() == (ROOT.parents[1] / "LICENSE").read_bytes()

@@ -100,7 +100,7 @@ class StudioMediaClient:
         if not parts.hostname or parts.username or parts.password or parts.query or parts.fragment or not (
             parts.scheme == "https" or parts.scheme == "http" and parts.hostname in {"localhost", "127.0.0.1", "::1"}
         ):
-            raise VideoProviderError("本地猫影的平台地址无效")
+            raise VideoProviderError("本地捷元乐AIGC的平台地址无效")
         self.endpoint = base_url.rstrip("/") + "/studio/media-lease"
         self.api_key = api_key
         root = Path(settings.STUDIO_MEDIA_CACHE_PATH).resolve()

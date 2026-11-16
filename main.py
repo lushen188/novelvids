@@ -211,7 +211,7 @@ if settings.DEPLOYMENT_ROLE == "platform":
     from api.platform import console_router, developer_router
     app.include_router(console_router, prefix="/api")
     from services.platform.http_contract import DEVELOPER_EXCEPTION_HANDLERS
-    developer_api = FastAPI(title="猫影模型 API", version="1", docs_url=None, redoc_url=None,
+    developer_api = FastAPI(title="捷元乐AIGC模型 API", version="1", docs_url=None, redoc_url=None,
                             exception_handlers=DEVELOPER_EXCEPTION_HANDLERS)
     developer_api.include_router(developer_router)
     app.mount("/v1", developer_api)

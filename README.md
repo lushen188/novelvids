@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/images/logo.png" width="200" alt="猫影短剧 · NovelVids Logo">
+  <img src="docs/images/logo.png" width="200" alt="捷元乐AIGC · NovelVids Logo">
 </p>
 
-<h1 align="center">猫影短剧 · NovelVids</h1>
+<h1 align="center">捷元乐AIGC · NovelVids</h1>
 
 <p align="center">
-  <strong>开源 AI 漫剧与短剧工作台，在本地管理作品，可接入自有模型或猫影开放平台。</strong>
+  <strong>开源 AI 漫剧与短剧工作台，在本地管理作品，可接入自有模型或捷元乐AIGC开放平台。</strong>
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
-  <a href="https://shortdramas.xiazq.com"><img src="https://img.shields.io/badge/online-猫影商业站-6864e8" alt="猫影商业站"></a>
+  <a href="https://shortdramas.xiazq.com"><img src="https://img.shields.io/badge/online-捷元乐AIGC商业站-6864e8" alt="捷元乐AIGC商业站"></a>
   <a href="README.en.md"><img src="https://img.shields.io/badge/language-中文%20%2F%20English-555" alt="中文 / English"></a>
 </p>
 
@@ -31,10 +31,10 @@
 
 选一种用法，把对应的一句话发给 AI。
 
-**下载并使用猫影工作台**
+**下载并使用捷元乐AIGC工作台**
 
 ```text
-请从 https://github.com/Anning01/novelvids 下载猫影工作台，用 Docker 在我的电脑上启动它，并用 scripts/update/install-docker.sh 启用在线升级，然后告诉我在哪里打开工作台、导入小说。
+请从 https://github.com/Anning01/novelvids 下载捷元乐AIGC工作台，用 Docker 在我的电脑上启动它，并用 scripts/update/install-docker.sh 启用在线升级，然后告诉我在哪里打开工作台、导入小说。
 ```
 
 **单独使用创作 Skills**
@@ -53,10 +53,10 @@
 
 ## 加入交流群
 
-欢迎加入 **猫影短剧 · NovelVids 微信交流群**，交流 AI 漫剧、短剧制作、模型使用与开源部署。
+欢迎加入 **捷元乐AIGC · NovelVids 微信交流群**，交流 AI 漫剧、短剧制作、模型使用与开源部署。
 
 <p align="center">
-  <a href="docs/images/wechat-group-qr.jpg"><img src="docs/images/wechat-group-qr.jpg" width="320" alt="猫影短剧 NovelVids 微信交流群二维码，2026 年 11 月 15 日前有效"></a>
+  <a href="docs/images/wechat-group-qr.jpg"><img src="docs/images/wechat-group-qr.jpg" width="320" alt="捷元乐AIGC NovelVids 微信交流群二维码，2026 年 11 月 15 日前有效"></a>
 </p>
 
 <p align="center">
@@ -64,19 +64,19 @@
   二维码有效期为 7 天；如已失效，请查看仓库首页的最新版本。
 </p>
 
-## 猫影服务
+## 捷元乐AIGC服务
 
-**[进入猫影商业站 →](https://shortdramas.xiazq.com)**
+**[进入捷元乐AIGC商业站 →](https://shortdramas.xiazq.com)**
 
 使用器灵账号微信扫码登录。新版开放平台提供模型目录、接口文档、API Key、用量和充值。旧作品的迁移入口见「本地工作台和开放平台」。
 
-本仓库提供猫影创作工作台与创作规则。模型开放平台已独立为 [Cat API](https://github.com/Anning01/cat-api)。本地工作台的账号、团队和余额由部署者管理，平台账号与模型调用费用由 Cat API 独立管理。
+本仓库提供捷元乐AIGC创作工作台与创作规则。模型开放平台已独立为 [Cat API](https://github.com/Anning01/cat-api)。本地工作台的账号、团队和余额由部署者管理，平台账号与模型调用费用由 Cat API 独立管理。
 
 ## 使用教程
 
 **[观看 B 站使用教程 →](https://www.bilibili.com/video/BV12JW76dEkj/)**
 
-想了解猫影短剧怎么用，可以先看视频教程；生成的成片效果见下方「作品示例」。
+想了解捷元乐AIGC怎么用，可以先看视频教程；生成的成片效果见下方「作品示例」。
 
 ## 作品示例
 
@@ -112,7 +112,7 @@
 - **每一步可以修改。** 保留提示词与生成版本；可以只调整一个镜头，再决定是否生成。
 - **按钮与对话用同一套能力。** 创作助手负责编排，图片和视频模型负责生成，任务与用量有记录。
 - **规则可以自己改。** 故事、资产、生图和分镜规则集中在一套中文 Skills；按系统语言输出中文或英文。
-- **模型可选。** 作品保存在本地，可使用自有模型服务，也可配置猫影开放平台。
+- **模型可选。** 作品保存在本地，可使用自有模型服务，也可配置捷元乐AIGC开放平台。
 
 ### 新版界面
 
@@ -134,7 +134,7 @@
 
 本仓库部署创作工作台，默认使用 `NOVELVIDS_ROLE=studio`。开放平台请使用独立的 [Cat API 项目](https://github.com/Anning01/cat-api)。在项目列表的更多操作中选择「导出作品」，在另一套本地工作台选择「导入作品」即可恢复为新项目。云端素材由导出浏览器直接下载，存储域名需允许该工作台来源的跨域读取。
 
-在平台控制台创建用途为「本地猫影」的 API Key，然后用工作台超级管理员打开「模型配置 → 连接开放平台」，填入 Key 并同步模型。工作台默认连接 `https://shortdramas.xiazq.com/v1`，也可通过 `STUDIO_PLATFORM_BASE_URL` 指定其他平台地址。成片由工作台直接下载并保存在本地。
+在平台控制台创建用途为「本地捷元乐AIGC」的 API Key，然后用工作台超级管理员打开「模型配置 → 连接开放平台」，填入 Key 并同步模型。工作台默认连接 `https://shortdramas.xiazq.com/v1`，也可通过 `STUDIO_PLATFORM_BASE_URL` 指定其他平台地址。成片由工作台直接下载并保存在本地。
 
 旧版本的 `NOVELVIDS_ROLE=platform` 仅为已有部署保留兼容，新部署应分别安装工作台与 Cat API。旧站用户可登录 [历史作品迁移](https://shortdramas.xiazq.com/#/legacy-works) 下载完整作品包，再导入本地工作台。切换服务前应保留原作品和媒体，预留迁移时间并提前通知用户。
 
@@ -184,7 +184,7 @@ npm run dev
 
 ## 赞赏支持
 
-如果这个项目对你有帮助，欢迎通过微信或支付宝赞赏，支持我继续开发和维护猫影短剧。感谢你的支持！
+如果这个项目对你有帮助，欢迎通过微信或支付宝赞赏，支持我继续开发和维护捷元乐AIGC。感谢你的支持！
 
 | 微信支付 | 支付宝 |
 | :---: | :---: |
@@ -201,7 +201,7 @@ npm run dev
 <!-- star-growth-card:start -->
 <p align="center">
   <a href="https://github.com/Anning01/novelvids/stargazers">
-    <img src="https://novelvids-star-history.864399407.workers.dev/card.svg" width="920" alt="猫影短剧 GitHub Star 增长曲线">
+    <img src="https://novelvids-star-history.864399407.workers.dev/card.svg" width="920" alt="捷元乐AIGC GitHub Star 增长曲线">
   </a>
 </p>
 <!-- star-growth-card:end -->

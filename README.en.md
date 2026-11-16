@@ -2,7 +2,7 @@
   <img src="docs/images/logo.png" width="200" alt="NovelVids logo">
 </p>
 
-<h1 align="center">NovelVids · 猫影短剧</h1>
+<h1 align="center">NovelVids · 捷元乐AIGC</h1>
 
 <p align="center">
   <strong>An open-source local workspace for illustrated stories and short dramas, with your own models or the NovelVids developer platform.</strong>
@@ -51,7 +51,7 @@ For an existing standard SQLite Compose installation, run `sh scripts/update/ins
 
 ## Join the community
 
-Join the **NovelVids · 猫影短剧 WeChat group** to discuss AI animation, short dramas, model workflows and open-source deployment.
+Join the **NovelVids · 捷元乐AIGC WeChat group** to discuss AI animation, short dramas, model workflows and open-source deployment.
 
 <p align="center">
   <a href="docs/images/wechat-group-qr.jpg"><img src="docs/images/wechat-group-qr.jpg" width="320" alt="NovelVids WeChat group QR code, valid before November 15, 2026"></a>
@@ -132,7 +132,7 @@ Screenshots use public example projects in the current Chinese interface. Englis
 
 This repository runs the creative workspace with `NOVELVIDS_ROLE=studio` by default. Deploy the developer platform from the separate [Cat API repository](https://github.com/Anning01/cat-api). Use **Export project** in the project menu and **Import project** in another local studio to restore a new project. The exporting browser downloads cloud media directly from storage, which must permit cross-origin reads from the studio origin.
 
-Create a key for **Local Cat Shadow Studio** in the platform console. As a studio super administrator, open **Model configuration → Connect to the platform**, enter the key, and sync the models. The studio uses `https://shortdramas.xiazq.com/v1` by default. Set `STUDIO_PLATFORM_BASE_URL` to use a different platform address. The studio downloads completed videos directly to local storage.
+Create a key for **Local JYL AIGC Studio** in the platform console. As a studio super administrator, open **Model configuration → Connect to the platform**, enter the key, and sync the models. The studio uses `https://shortdramas.xiazq.com/v1` by default. Set `STUDIO_PLATFORM_BASE_URL` to use a different platform address. The studio downloads completed videos directly to local storage.
 
 The legacy `NOVELVIDS_ROLE=platform` role remains for existing deployments. New installations should deploy the studio and Cat API separately. Users of the retired online studio can download a complete project package from [Historical project migration](https://shortdramas.xiazq.com/#/legacy-works) and import it into a local studio. Preserve original projects and media, allow time for migration and notify users before switching services.
 

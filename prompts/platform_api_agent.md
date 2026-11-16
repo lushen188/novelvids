@@ -1,12 +1,12 @@
-# 猫影模型 API：AI Agent 接入说明
+# 捷元乐AIGC模型 API：AI Agent 接入说明
 
 Base URL：`{{BASE_URL}}`
 
-公共对话接口遵循 OpenAI Chat Completions，图片和视频使用标准 JSON 结果与任务结构。文件由客户端直接上传临时 OSS，猫影只接收元数据和 URL。
+公共对话接口遵循 OpenAI Chat Completions，图片和视频使用标准 JSON 结果与任务结构。文件由客户端直接上传临时 OSS，捷元乐AIGC只接收元数据和 URL。
 
 ## 认证与模型
 
-在猫影开放平台创建 API Key，保存到 `NOVELVIDS_API_KEY` 环境变量。发送 `Authorization: Bearer <API_KEY>`，使用该 Key 所属用户的团队权限与余额。
+在捷元乐AIGC开放平台创建 API Key，保存到 `NOVELVIDS_API_KEY` 环境变量。发送 `Authorization: Bearer <API_KEY>`，使用该 Key 所属用户的团队权限与余额。
 
 `model` 接受已启用模型的目录 ID（`nv-...`）、唯一配置名称或原模型 ID。原模型已启用时可以沿用原代码中的 model，仅修改 base_url 和 api_key。名称存在多个匹配项时使用目录 ID。
 
@@ -55,7 +55,7 @@ def upload_reference(path: str, content_type: str) -> str:
 reference_url = upload_reference("reference.png", "image/png")
 ```
 
-upload_url 的 PUT 授权有效期为 10 分钟，read_url 有效期为 48 小时。PUT 只使用票据内的 headers，不向 OSS 发送猫影 API Key。保留 read_url 供同一任务重试；过期后重新申请并上传。上传完成后再调用生成接口。
+upload_url 的 PUT 授权有效期为 10 分钟，read_url 有效期为 48 小时。PUT 只使用票据内的 headers，不向 OSS 发送捷元乐AIGC API Key。保留 read_url 供同一任务重试；过期后重新申请并上传。上传完成后再调用生成接口。
 
 生成接口只接收 JSON，单次最多 1 MB；multipart 文件、data URL、b64_json、内联音频或文件数据会在供应商调用前被拒绝。不要调用 SDK 的文件上传模式，改为使用上传完成的 URL。
 
@@ -125,7 +125,7 @@ else:
 
 input_reference 的 URL 放入 extra_body，避免 SDK 将文件参数编码为 multipart。纯文生视频可省略参考图。
 
-返回标准 Video 对象：id、object="video"、model、created_at、completed_at、seconds、size、status、progress、error。`GET /videos/{id}/content` 跳转到成片下载地址，SDK 自动跟随，猫影不转发视频内容。当前不提供 thumbnail/spritesheet。
+返回标准 Video 对象：id、object="video"、model、created_at、completed_at、seconds、size、status、progress、error。`GET /videos/{id}/content` 跳转到成片下载地址，SDK 自动跟随，捷元乐AIGC不转发视频内容。当前不提供 thumbnail/spritesheet。
 
 多参考图片、视频或音频：通过 extra_body.references 传数组，元素为 {"type":"image|video|audio", "role":"reference|first_frame|last_frame", "url":"HTTPS 地址"}。input_reference 和 references 二选一。首尾帧分别提供一张图片。
 
@@ -133,7 +133,7 @@ input_reference 的 URL 放入 extra_body，避免 SDK 将文件参数编码为 
 
 ## 错误、重试与结算
 
-上游 HTTP 错误保留原始状态码、响应体、Content-Type、Retry-After 和 X-Request-Id。平台记录错误状态与请求编号，不套猫影响应结构或改写供应商文案；回显的平台凭证会被脱敏。
+上游 HTTP 错误保留原始状态码、响应体、Content-Type、Retry-After 和 X-Request-Id。平台记录错误状态与请求编号，不套捷元乐AIGC响应结构或改写供应商文案；回显的平台凭证会被脱敏。
 
 平台自己的认证、权限、参数、体积和并发错误使用标准 {"error":{"message":"...","type":"...","param":null,"code":null}}。对话流开始后的错误通过 SSE 返回。
 

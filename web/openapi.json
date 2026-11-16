@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "猫影短剧",
+    "title": "捷元乐AIGC",
     "version": "1.0.0"
   },
   "paths": {

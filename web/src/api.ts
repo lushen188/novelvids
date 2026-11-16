@@ -1,7 +1,7 @@
 import { generationRequest, finishGenerationRequest } from '@/shared/generationRequests'
 
 import { tr } from '@/i18n'
-import type { ModelPricing, ProjectOverview } from './types'
+import type { ProjectOverview } from './types'
 import type { BillingStatement, BillingStatementFilters, BillingStatementParties } from './types'
 import { diagnosticScope, recordRequestFailure, diagnosticReport, type DiagnosticEntry } from '@/shared/diagnostics'
 import { downloadFile, saveBlob } from '@/shared/downloadFile'
@@ -503,11 +503,6 @@ export const api = {
   workbenchCapabilities: () => request<SingleResponse<WorkbenchCapabilities>>('/workbench/capabilities'),
   workbenchBootstrap: (novelId: number, chapterId: number, signal?: AbortSignal) => request<SingleResponse<WorkbenchBootstrap>>(`/workbench/bootstrap${qs({ novel_id: novelId, chapter_id: chapterId })}`, signal ? { signal } : undefined),
   configs: () => request<PaginationResponse<AiModelConfig>>('/config?page=1&page_size=100'),
-  studioPlatform: () => request<SingleResponse<{ connected: boolean; key_management_url?: string }>>('/config/studio-platform'),
-  studioPlatformAccount: () => request<SingleResponse<{ balance: string; currency: string; recharge_url: string }>>('/config/studio-platform/account'),
-  connectStudioPlatform: (key: string) => request<SingleResponse<{ synced: number; unsupported?: Record<string, string> }>>('/config/studio-platform', { method: 'PUT', body: JSON.stringify({ api_key: key }) }),
-  platformImageTariff: (id: number) => request<SingleResponse<ModelPricing>>(`/config/studio-platform/image-tariff/${id}`),
-  syncStudioPlatform: () => request<SingleResponse<{ synced: number; unsupported?: Record<string, string> }>>('/config/studio-platform/sync', { method: 'POST' }),
   imageGenerationModels: () => request<SingleResponse<ImageGenerationModel[]>>('/config/image-generation/models'),
   videoGenerationModels: () => request<SingleResponse<VideoGenerationModel[]>>('/config/video-generation/models'),
   generationCapabilities: () => request<SingleResponse<GenerationCapabilities>>('/config/generation/capabilities'),

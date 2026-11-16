@@ -14,6 +14,6 @@
 - `orientation` 与底图一致。`assets` 写 name、x、y、kind（person、animal、prop、anchor），人物或动物的 heading 表示朝向（图上为 0°，顺时针）。end 是移动终点；多段转折可写 route 点列。用 facing 写必要的表演朝向或道具起始状态。同一种道具有多个同时出镜的实例时，分别给唯一图上 name，并用 asset_name 指回同一个已登记资产。
 - `axis` 用两个已登记主体或锚点的名称给出动作轴两端。
 - `cameras` 按拍摄次序写 x、y、target、frame、framing、beat。frame 是取景扇形远边的两个不同端点，与机位组成非退化三角形；按计划让目标和同框主体落入其中。framing 写景别、机位高度和实际入画部分；beat 写本机位对应的时间、走位或手中道具的变化。无须臆测焦距。
-- 运行 `python3 scripts/draw_blocking.py shot.json shot.svg --layout layouts/<场景形态ID>.json`。同一底图可配不同镜头的覆盖层。需要空场景底图的独立图片时，给该命令加 `--base-only`。交给猫影时将相同底图对象嵌入 `structure.blocking_map.layout`，随本镜交付合成图，媒体角色为 blocking。
+- 运行 `python3 scripts/draw_blocking.py shot.json shot.svg --layout layouts/<场景形态ID>.json`。同一底图可配不同镜头的覆盖层。需要空场景底图的独立图片时，给该命令加 `--base-only`。交给捷元乐AIGC时将相同底图对象嵌入 `structure.blocking_map.layout`，随本镜交付合成图，媒体角色为 blocking。
 
 视频生成时，将合成图作为本镜图片输入，按本次提交的图片顺序引用。提示词交代观众从哪个机位看到谁、从画面哪侧进出、切点前后动作如何接续。坐标留在蓝图数据里。故事版给构图与表演节奏，定位图给空间关系；成片按作品选定的风格呈现。

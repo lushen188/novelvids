@@ -34,7 +34,7 @@ test("cumulative points end at the current star count", () => {
 test("renders an accessible responsive-theme SVG card", () => {
   const svg = renderStarHistoryCard({
     repository: "Anning01/novelvids",
-    title: "猫影短剧",
+    title: "捷元乐AIGC",
     stars: 296,
     forks: 80,
     createdAt: "2026-02-03T14:41:15Z",
@@ -42,7 +42,7 @@ test("renders an accessible responsive-theme SVG card", () => {
     now: new Date("2026-09-07T00:00:00Z"),
   });
 
-  assert.match(svg, /<title id="title">猫影短剧 Star 增长曲线<\/title>/);
+  assert.match(svg, /<title id="title">捷元乐AIGC Star 增长曲线<\/title>/);
   assert.match(svg, /prefers-color-scheme:dark/);
   assert.match(svg, /296/);
   assert.match(svg, /Anning01\/novelvids/);

@@ -25,7 +25,7 @@ normalizedUrl.hash = "";
 const replacement = `${START}
 <p align="center">
   <a href="https://github.com/Anning01/novelvids/stargazers">
-    <img src="${normalizedUrl}" width="920" alt="猫影短剧 GitHub Star 增长曲线">
+    <img src="${normalizedUrl}" width="920" alt="捷元乐AIGC GitHub Star 增长曲线">
   </a>
 </p>
 ${END}`;
