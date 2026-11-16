@@ -10,7 +10,6 @@ import { computed, ref, watch } from 'vue'
 import { mediaUrl } from '@/api'
 import { notice } from '@/shared/notice'
 import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
-import StudioReleaseBanner from '@/components/StudioReleaseBanner.vue'
 import AppNotice from '@/components/AppNotice.vue'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 import AppSidebarPreferences from '@/components/AppSidebarPreferences.vue'
@@ -103,7 +102,6 @@ function handleTeamSwitch(teamId: string) {
 <template>
   <ElConfigProvider :locale="elementLocale">
   <div class="studio-frame">
-  <StudioReleaseBanner v-if="!platform && !isFullscreen" />
   <div class="app-shell" :class="{ 'is-workflow-surface': isWorkflowSurface }">
     <aside v-if="!isFullscreen" class="app-sidebar">
       <RouterLink to="/" class="app-brand" :aria-label="tr('捷元乐AIGC首页')">

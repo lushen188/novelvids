@@ -100,22 +100,3 @@ def test_container_activation_preserves_shared_socket_volume(tmp_path, monkeypat
     config = json.loads(overlay.read_text())
     assert config["volumes"] == {"studio_update_runtime": {"external": True}}
     assert config["services"]["backend"]["volumes"] == ["studio_update_runtime:/run/novelvids-update:ro"]
-
-
-@pytest.mark.asyncio
-async def test_release_status_uses_stamped_asset_instead_of_main_version(monkeypatch):
-    import httpx
-    from services.releases import status
-    latest = {"tag_name": "v1.2.0", "draft": False, "prerelease": False,
-              "assets": [{"name": "release.json", "browser_download_url": "https://github.com/release.json"}]}
-    manifest = {"version": "1.2.0", "minimum": {}, "summary": "更新", "summary_en": "Update", "update_format": 1}
-    urls = []
-    def respond(request):
-        urls.append(str(request.url))
-        return httpx.Response(200, json=latest if request.url.host == "api.github.com" else manifest)
-    client = httpx.AsyncClient
-    monkeypatch.setattr(status.httpx, "AsyncClient", lambda **kwargs: client(**kwargs, transport=httpx.MockTransport(respond)))
-    monkeypatch.setattr(status, "_checked", 0)
-    monkeypatch.setattr(status, "_latest", None)
-    assert (await status.latest_release())["version"] == "1.2.0"
-    assert urls[-1] == "https://github.com/release.json"

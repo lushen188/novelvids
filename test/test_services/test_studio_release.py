@@ -2,9 +2,7 @@ import json
 import sqlite3
 
 import pytest
-from fastapi import HTTPException
 
-from api import release
 from scripts.update import agent
 from services.releases import version_key
 
@@ -13,15 +11,6 @@ def test_numeric_version_order():
     assert version_key("1.10.0") > version_key("1.9.9")
     with pytest.raises(ValueError):
         version_key("1.1.0; cmd")
-
-
-@pytest.mark.asyncio
-async def test_reject_update_for_other_version_and_manual_release(monkeypatch):
-    from unittest.mock import AsyncMock
-    for online, target in [(True, "9.9.9"), (False, "2.0.0")]:
-        monkeypatch.setattr(release, "latest_release", AsyncMock(return_value={"version":"2.0.0", "online":online}))
-        with pytest.raises(HTTPException, match="409"):
-            await release.update(release.UpdateRequest(version=target))
 
 
 def test_updater_recovers_interrupted_switch_with_original_database_and_images(tmp_path, monkeypatch):
@@ -84,22 +73,3 @@ def test_update_host_builds_new_tag_and_finishes_after_health_check(tmp_path, mo
     assert len([args for args in calls if args[:2] == ("docker","build")]) == 2
     assert (state / "previous-novelvids.db").is_file()
     assert not (state / "switch.json").exists()
-
-
-@pytest.mark.asyncio
-async def test_version_manifest_checks_release_tag_and_feature_minimum(monkeypatch):
-    import httpx
-    from services.releases import status
-    latest = {"tag_name":"v2.1.0","draft":False,"prerelease":False}
-    manifest = {"version":"2.1.0","update_format":1,"summary":"升级", "summary_en":"Upgrade",
-                "minimum":{"images":"2.0.0","text":"1.0.0"}}
-    client = httpx.AsyncClient
-    monkeypatch.setattr(status.httpx, "AsyncClient", lambda **kw: client(**kw,
-        transport=httpx.MockTransport(lambda req: httpx.Response(200, json=latest if req.url.host == "api.github.com" else manifest))))
-    monkeypatch.setattr(status, "_checked", 0)
-    monkeypatch.setattr(status, "_latest", None)
-    data = await status.latest_release()
-    assert data["version"] == "2.1.0" and data["required"] == ["images"] and data["online"]
-    manifest["version"] = "3.0.0"
-    monkeypatch.setattr(status, "_checked", 0)
-    assert await status.latest_release() == data
