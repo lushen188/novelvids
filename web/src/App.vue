@@ -106,10 +106,10 @@ function handleTeamSwitch(teamId: string) {
   <StudioReleaseBanner v-if="!platform && !isFullscreen" />
   <div class="app-shell" :class="{ 'is-workflow-surface': isWorkflowSurface }">
     <aside v-if="!isFullscreen" class="app-sidebar">
-      <RouterLink to="/" class="app-brand" :aria-label="tr('猫影首页')">
+      <RouterLink to="/" class="app-brand" :aria-label="tr('捷元乐AIGC首页')">
         <img src="/logo.png" alt="" />
         <span>
-          <strong>{{ tr('猫影') }}</strong>
+          <strong>{{ tr('捷元乐AIGC') }}</strong>
           <small>{{ platform ? tr('开放平台') : 'NOVEL STUDIO' }}</small>
         </span>
       </RouterLink>

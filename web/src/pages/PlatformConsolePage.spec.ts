@@ -207,7 +207,7 @@ it('renders keys table with header stats, toolbar filters and row actions', asyn
   // Table rows and content
   expect(w.find('.keys-table').exists()).toBe(true)
   expect(w.text()).toContain('我的本地猫影')
-  expect(w.text()).toContain('本地猫影')
+  expect(w.text()).toContain('本地捷元乐AIGC')
   expect(w.text()).toContain('前端测试')
   expect(w.text()).toContain('通用 API')
   expect(w.text()).toContain('启用')

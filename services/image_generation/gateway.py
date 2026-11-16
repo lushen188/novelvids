@@ -160,7 +160,7 @@ async def generate_images(
         from services.oss.studio_client import studio_client
         studio = studio_client(None, base_url=base_url, api_key=api_key)
         if not studio and api_protocol == ImageApiProtocol.novelvids.value:
-            raise ImageGenerationError("本地猫影的平台密钥尚未配置")
+            raise ImageGenerationError("本地捷元乐AIGC的平台密钥尚未配置")
         if studio:
             refs = [images] if isinstance(images, str) else images
             uploaded = [await studio.resolve(ref) if ref.startswith(("data:", "/media/")) else ref for ref in refs]

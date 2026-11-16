@@ -226,7 +226,7 @@ function onError(event: Event) {
       <div class="project-cover__watermark" :aria-hidden="true">{{ formatted.leadChar }}</div>
       <div class="project-cover__header" :style="{ color: palette.lineColor }">
         <Clapperboard :size="10" aria-hidden="true" />
-        <span>{{ tr('猫影') }}</span>
+        <span>{{ tr('捷元乐AIGC') }}</span>
       </div>
       <div class="project-cover__body">
         <strong class="project-cover__title" :title="formatted.cleanTitle">{{ formatted.displayTitle }}</strong>

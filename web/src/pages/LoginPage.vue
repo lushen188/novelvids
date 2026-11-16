@@ -80,9 +80,9 @@ async function qilingAuthenticated(session: LoginResult) {
         <h1 class="cinematic-login__brand">
           <img src="/logo.png" alt="" width="72" height="72" />
           <span class="cinematic-login__brand-name">
-            <span class="cinematic-login__brand-title">{{ tr('猫影短剧') }}</span>
-            <span class="cinematic-login__wordmark" role="img" aria-label="NOVELVIDS">
-              <span v-for="(letter, index) in 'NOVELVIDS'" :key="index" aria-hidden="true">{{ letter }}</span>
+            <span class="cinematic-login__brand-title">{{ tr('捷元乐AIGC') }}</span>
+            <span class="cinematic-login__wordmark" role="img" aria-label="JYL AIGC">
+              <span v-for="(letter, index) in 'JYL AIGC'" :key="index" aria-hidden="true">{{ letter }}</span>
             </span>
           </span>
         </h1>
@@ -111,7 +111,7 @@ async function qilingAuthenticated(session: LoginResult) {
 
       <section class="cinematic-login__glass" :class="{ 'is-password': auth.provider === 'password' }" aria-labelledby="login-title">
         <h2 id="login-title">{{ auth.provider === 'password' ? tr('账号登录') : tr('微信扫码登录') }}</h2>
-        <p>{{ auth.provider === 'password' ? tr('登录后继续创作') : tr('使用器灵账号进入猫影') }}</p>
+        <p>{{ auth.provider === 'password' ? tr('登录后继续创作') : tr('使用器灵账号进入捷元乐AIGC') }}</p>
         <form v-if="auth.provider === 'password'" class="cinematic-login__password" @submit.prevent="passwordLogin">
           <label>{{ tr('用户名') }}<input v-model="username" autocomplete="username" required :disabled="submitting" /></label>
           <label>{{ tr('密码') }}<input v-model="password" type="password" autocomplete="current-password" required :disabled="submitting" /></label>

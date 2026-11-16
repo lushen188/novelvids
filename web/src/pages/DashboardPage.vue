@@ -223,7 +223,7 @@ onBeforeUnmount(() => { cancelTransfers(); ++requestRevision; window.removeEvent
     <header class="projects-page__header">
       <div>
         <h1>{{ auth.deploymentRole === 'platform' ? tr('作品迁移') : tr('我的项目') }}</h1>
-        <p v-if="editable && auth.deploymentRole === 'platform'" class="projects-page__migration-hint">{{ tr('下载作品包后，在本地猫影的项目列表中选择「导入作品」。') }}</p>
+        <p v-if="editable && auth.deploymentRole === 'platform'" class="projects-page__migration-hint">{{ tr('下载作品包后，在本地捷元乐AIGC的项目列表中选择「导入作品」。') }}</p>
       </div>
       <div v-if="editable && auth.deploymentRole === 'studio'" class="projects-page__actions">
         <input ref="filePicker" type="file" hidden accept=".zip,application/zip" @change="uploadProject">

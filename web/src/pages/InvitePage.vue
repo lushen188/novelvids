@@ -77,7 +77,7 @@ onMounted(load)
       <p v-if="loading" class="dim">{{ tr('加载邀请信息…') }}</p>
 
       <template v-else-if="invite">
-        <img class="invite-logo" src="/logo.png" :alt="tr('猫影')" />
+        <img class="invite-logo" src="/logo.png" :alt="tr('捷元乐AIGC')" />
         <h1>{{ tr('加入「') }}{{ invite.team_name }}」</h1>
         <p class="invite-subtitle">{{ tr('你受邀加入该团队，角色：') }}{{ { admin: tr('团队管理员'), creator: tr('创作者'), viewer: tr('查看者') }[invite.role] }}</p>
 

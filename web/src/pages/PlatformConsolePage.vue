@@ -1409,7 +1409,7 @@ onBeforeUnmount(() => { ++epoch; secret.value = '' })
                   :options="[
                     { value: 'all', label: tr('全部用途') },
                     { value: 'api', label: tr('通用 API') },
-                    { value: 'studio', label: tr('本地猫影') },
+                    { value: 'studio', label: tr('本地捷元乐AIGC') },
                   ]"
                   :ariaLabel="tr('全部用途')"
                   density="compact"
@@ -1475,7 +1475,7 @@ onBeforeUnmount(() => { ++epoch; secret.value = '' })
                       <span class="purpose-pill" :class="`is-${k.purpose || 'api'}`">
                         <Code v-if="k.purpose !== 'studio'" :size="12" aria-hidden="true" />
                         <Layers v-else :size="12" aria-hidden="true" />
-                        <span>{{ k.purpose === 'studio' ? tr('本地猫影') : tr('通用 API') }}</span>
+                        <span>{{ k.purpose === 'studio' ? tr('本地捷元乐AIGC') : tr('通用 API') }}</span>
                       </span>
                     </td>
                     <td>

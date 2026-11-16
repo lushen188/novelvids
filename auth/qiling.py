@@ -113,7 +113,7 @@ async def poll(token: str, user: User | None = None) -> dict:
             linked = await QilingIdentity.get_or_none(issuer=attempt.issuer, subject=identity.sub).select_related("user")
             if user:
                 if linked or await QilingIdentity.filter(user_id=user.id).exists():
-                    raise HTTPException(409, msg("该器灵账号或猫影账号已绑定"))
+                    raise HTTPException(409, msg("该器灵账号或捷元乐AIGC账号已绑定"))
                 await QilingIdentity.create(issuer=attempt.issuer, subject=identity.sub, user=user)
                 return {"status": "bound"}
             if linked:

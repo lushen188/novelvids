@@ -196,7 +196,7 @@ async function create() {
       </section>
       <div v-else key="home" class="home-content">
         <header class="home-heading">
-          <span class="home-eyebrow"><Sparkles :size="14" aria-hidden="true" />{{ tr('猫影 · 你的 AI 创作片场') }}</span>
+          <span class="home-eyebrow"><Sparkles :size="14" aria-hidden="true" />{{ tr('捷元乐AIGC · 你的 AI 创作片场') }}</span>
           <h1>{{ tr('具现想象') }} <span>{{ tr('一镜成片') }}</span></h1>
           <p>{{ tr('从灵感到画面，让每一个好故事都有自己的镜头。') }}</p>
         </header>

@@ -42,7 +42,7 @@ export function tr(source: string, parameters: Record<string, unknown> = {}): st
 export function setLocale(value: AppLocale): void {
   locale.value = value
   document.documentElement.lang = value === 'zh' ? 'zh-CN' : 'en'
-  document.title = value === 'zh' ? '猫影短剧 | Cat Shadow Studio' : 'NovelVids | Short drama studio'
+  document.title = value === 'zh' ? '捷元乐AIGC | JieYuanLe Studio' : 'JYL AIGC | AI Creative Studio'
   try { localStorage.setItem(LOCALE_CACHE_KEY, value) } catch { /* Storage may be disabled. */ }
 }
 let revision = 0
