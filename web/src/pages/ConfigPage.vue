@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { tr } from '@/i18n'
 
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 import '@/features/resource-library/dialog.css'
 import {
   Bot,
@@ -110,7 +110,14 @@ const editingSyncedPricing = ref(false)
 const editedBillingUnit = ref<ModelPricing['billing_unit']>()
 const showApiKey = ref(false)
 const selectedCategoryId = ref<ModelCategoryId>('llm')
-const form = ref({ task_types: ['1'], name: '', base_url: '', api_key: '', model: '', api_protocol: 'openai_compatible' as ImageApiProtocol, image_model_type: '' as ImageModelType | '', video_model_type: '' as VideoGenerationModelType | '', concurrency: 1, supports_json_output: false, supports_tool_calls: false, max_context_characters: '' as number | '', thinking: '' as 'enabled' | 'disabled' | '', max_tokens: '' as number | '' })
+const form = ref({ task_types: ['1'], name: '', base_url: '', api_key: '', model: '', api_protocol: 'openai_compatible' as ImageApiProtocol, image_model_type: '' as ImageModelType | '', video_model_type: '' as VideoGenerationModelType | '', concurrency: 1, supports_tool_calls: false, text_api: 'chat_completions' as 'chat_completions' | 'responses', supports_json_output: false, supports_strict_output: false, max_context_characters: '' as number | '', thinking: '', reasoning_effort: '', max_tokens: '' as number | '' })
+const outputMode = computed({
+  get: () => form.value.supports_strict_output ? 'json_schema' : 'text',
+  set: (value: string) => {
+    form.value.supports_json_output = value !== 'text'
+    form.value.supports_strict_output = value === 'json_schema'
+  },
+})
 
 function configTaskTypes(item: AiModelConfig) {
   return item.task_types?.length ? item.task_types : [item.task_type]
@@ -140,11 +147,7 @@ const imageProtocolOptions = computed(() => {
   ]
   return allowed ? allowed.flatMap(value => options.filter(option => option.value === value)) : options
 })
-const thinkingOptions = computed(() => [
-  { value: '', label: tr('按模型默认') },
-  { value: 'enabled', label: tr('开启思考（enabled）') },
-  { value: 'disabled', label: tr('关闭思考（disabled）') },
-])
+const reasoningControlId = useId()
 
 const generationCapabilities = ref<GenerationCapabilities>({ image: {}, video: {} })
 const enhancementPricing = ref<NonNullable<ModelPricing['tiers']>>([])
@@ -285,7 +288,7 @@ function openCreate(categoryId: ModelCategoryId = selectedCategoryId.value) {
   editingSyncedPricing.value = false
   selectedCategoryId.value = categoryId
   const category = categories.find(item => item.id === categoryId) ?? categories[0]
-  form.value = { task_types: [String(category.taskTypes[0])], name: '', base_url: category.id === 'video' ? 'https://ark.cn-beijing.volces.com/api/v3' : '', api_key: '', model: '', api_protocol: category.id === 'image' || category.id === 'video' ? 'volcengine_ark' : 'openai_compatible', image_model_type: category.id === 'image' ? 'seedream_5_lite' : '', video_model_type: category.id === 'video' ? 'seedance_2' : '', concurrency: 1, supports_json_output: false, supports_tool_calls: false, max_context_characters: '' as number | '', thinking: '' as 'enabled' | 'disabled' | '', max_tokens: '' as number | '' }
+  form.value = { task_types: [String(category.taskTypes[0])], name: '', base_url: category.id === 'video' ? 'https://ark.cn-beijing.volces.com/api/v3' : '', api_key: '', model: '', api_protocol: category.id === 'image' || category.id === 'video' ? 'volcengine_ark' : 'openai_compatible', image_model_type: category.id === 'image' ? 'seedream_5_lite' : '', video_model_type: category.id === 'video' ? 'seedance_2' : '', concurrency: 1, supports_tool_calls: false, text_api: 'chat_completions' as 'chat_completions' | 'responses', supports_json_output: false, supports_strict_output: false, max_context_characters: '' as number | '', thinking: '', reasoning_effort: '', max_tokens: '' as number | '' }
   const asrPreset = generationCapabilities.value.audio_recognition
   asrPrice.value = asrPreset?.pricing?.price_per_minute ?? 0
   if (category.id === 'asr' && asrPreset) Object.assign(form.value, { base_url: asrPreset.base_url, model: asrPreset.model, api_protocol: asrPreset.api_protocol })
@@ -330,10 +333,13 @@ function openEdit(item: AiModelConfig) {
     image_model_type: item.image_model_type || '',
     video_model_type: item.video_model_type || '',
     concurrency: item.concurrency,
-    supports_json_output: item.supports_json_output ?? false,
     supports_tool_calls: item.supports_tool_calls ?? false,
+    text_api: item.text_api ?? 'chat_completions',
+    supports_json_output: item.supports_json_output ?? false,
+    supports_strict_output: item.supports_strict_output ?? false,
     max_context_characters: item.max_context_characters ?? '',
     thinking: item.thinking ?? '',
+    reasoning_effort: item.reasoning_effort ?? '',
     max_tokens: item.max_tokens ?? '',
   }
   textPricing.value = item.pricing?.type === 'text'
@@ -392,9 +398,7 @@ function selectImageProtocol(value: string) {
   form.value.api_protocol = value as ImageApiProtocol
 }
 
-function selectThinking(value: string) {
-  form.value.thinking = value as 'enabled' | 'disabled' | ''
-}
+
 
 async function saveConfig() {
   if (!form.value.task_types.length) {
@@ -476,13 +480,14 @@ async function saveConfig() {
       task_types: taskTypes,
       max_context_characters: form.value.max_context_characters || null,
       thinking: form.value.thinking || null,
+      reasoning_effort: form.value.reasoning_effort || null,
       max_tokens: form.value.max_tokens || null,
       image_model_type: selectedCategoryId.value === 'image' ? form.value.image_model_type || null : null,
       video_model_type: selectedCategoryId.value === 'video' ? form.value.video_model_type || null : null,
       pricing,
     }
     if (editingConfigId.value !== null) {
-      await api.updateConfig(editingConfigId.value, editingSyncedPricing.value ? { pricing } : payload)
+      await api.updateConfig(editingConfigId.value, editingSyncedPricing.value ? { pricing, ...(selectedCategoryId.value === 'llm' ? { thinking: payload.thinking, reasoning_effort: payload.reasoning_effort } : {}) } : payload)
     } else {
       await api.createConfig(payload)
     }
@@ -551,7 +556,7 @@ watch(showCreate, async open => {
   if (open) {
     dialogTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
     await nextTick()
-    modelDialog.value?.querySelector<HTMLInputElement>(editingSyncedPricing.value ? '.pricing-editor input' : 'input[name="model-config-name"]')?.focus()
+    modelDialog.value?.querySelector<HTMLInputElement>(editingSyncedPricing.value ? (selectedCategoryId.value === 'llm' ? 'input[name="model-thinking"]' : '.pricing-editor input') : 'input[name="model-config-name"]')?.focus()
     return
   }
   dialogTrigger?.focus()
@@ -629,7 +634,7 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
               <span v-if="selectedCategory.id === 'image'">{{ protocolLabel(item.api_protocol) }}</span>
               <span v-if="selectedCategory.id === 'image'">{{ imageModelTypes.find(type => type.value === item.image_model_type)?.label || tr('未选择受支持类型') }}</span>
               <span v-if="selectedCategory.id === 'video'">{{ videoModelTypes.find(type => type.value === item.video_model_type)?.label || tr('未选择受支持类型') }}</span>
-              <span v-if="selectedCategory.id === 'llm'">{{ item.supports_json_output ? tr('JSON 格式化') : tr('提示词 JSON') }}</span>
+              <span v-if="selectedCategory.id === 'llm' && item.supports_json_output">{{ tr('结构化输出') }}</span>
             </div>
           </div>
           <div class="config-actions">
@@ -667,7 +672,7 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
         @keydown.esc.stop="closeModelDialog"
       >
         <header>
-          <div><AppIconTile :tone="iconTone(selectedCategory.id)" size="sm"><component :is="selectedCategory.icon" :size="18" /></AppIconTile><div><small>{{ isEditing ? 'EDIT MODEL' : 'ADD MODEL' }}</small><h2 id="model-modal-title">{{ editingSyncedPricing ? tr('编辑本地价格') : (isEditing ? tr('编辑') : tr('添加')) + selectedCategory.label }}</h2></div></div>
+          <div><AppIconTile :tone="iconTone(selectedCategory.id)" size="sm"><component :is="selectedCategory.icon" :size="18" /></AppIconTile><div><small>{{ isEditing ? 'EDIT MODEL' : 'ADD MODEL' }}</small><h2 id="model-modal-title">{{ editingSyncedPricing ? tr('本地调用设置与价格') : (isEditing ? tr('编辑') : tr('添加')) + selectedCategory.label }}</h2></div></div>
           <AppButton variant="soft" size="sm" icon-only type="button" :aria-label="tr('关闭')" @click="showCreate = false"><X :size="18" /></AppButton>
         </header>
 
@@ -746,17 +751,7 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
               :placeholder="tr('留空表示不预检')"
             />
           </label>
-          <label v-if="selectedCategory.id === 'llm'">
-            <span>{{ tr('思考模式') }}</span>
-            <AppSelect
-              :model-value="form.thinking"
-              :options="thinkingOptions"
-              :ariaLabel="tr('思考模式')"
-              :menu-z-index="2000"
-              @update:model-value="selectThinking"
-            />
-            <small>{{ tr('深度思考/推理模型可关闭思考以提速并避免正文被 reasoning 挤占。') }}</small>
-          </label>
+
           <label v-if="selectedCategory.id === 'llm'">
             <span>{{ tr('最大输出 token') }}</span>
             <input
@@ -768,14 +763,57 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
             />
             <small>{{ tr('限制单次请求输出，避免 JSON 因达到 token 上限被截断。') }}</small>
           </label>
-          <label v-if="selectedCategory.id === 'llm'" class="is-full json-capability-field">
-            <span class="json-capability-copy">
-              <strong>{{ tr('结构化 JSON 输出') }}</strong>
-              <small>{{ tr('开启后发送 response_format=json_object；关闭后仅使用提示词约束 JSON。') }}</small>
-            </span>
-            <input v-model="form.supports_json_output" type="checkbox" role="switch" :aria-label="tr('结构化 JSON 输出')" />
+          <label v-if="selectedCategory.id === 'llm'">
+            <span>{{ tr('文本接口') }}</span>
+            <AppSelect v-model="form.text_api" :ariaLabel="tr('文本接口')" :menu-z-index="2000"
+              :options="[{ value: 'chat_completions', label: 'Chat Completions' }, { value: 'responses', label: 'Responses' }]" />
+          </label>
+          <label v-if="selectedCategory.id === 'llm'">
+            <span>{{ tr('结构化输出') }}</span>
+            <AppSelect v-model="outputMode" :ariaLabel="tr('结构化输出')" :menu-z-index="2000"
+              :options="[{ value: 'text', label: tr('不支持') }, { value: 'json_schema', label: 'JSON Schema' }]" />
+            <small>{{ tr('文本创作任务仅使用 JSON Schema 严格字段约束。') }}</small>
           </label>
         </div>
+
+        <div v-if="selectedCategory.id === 'llm'" class="model-form-grid reasoning-controls">
+          <label :for="`${reasoningControlId}-thinking`">
+            <span :id="`${reasoningControlId}-thinking-label`">{{ tr('思考模式（thinking）') }}</span>
+            <input :id="`${reasoningControlId}-thinking`" v-model.trim="form.thinking" name="model-thinking" :aria-labelledby="`${reasoningControlId}-thinking-label`" :aria-describedby="`${reasoningControlId}-thinking-help`"
+              :list="`${reasoningControlId}-thinking-values`" :placeholder="tr('按模型默认，不发送参数')" maxlength="64" autocomplete="off" />
+            <datalist :id="`${reasoningControlId}-thinking-values`">
+              <option value="enabled">{{ tr('开启思考') }}</option>
+              <option value="disabled">{{ tr('关闭思考') }}</option>
+              <option v-for="level in ['low', 'medium', 'high', 'max']" :key="level" :value="level" />
+            </datalist>
+            <small :id="`${reasoningControlId}-thinking-help`">{{ form.text_api === 'responses' ? tr('Responses 使用 reasoning.effort；disabled 对应 none，enabled 沿用所设强度或模型默认值。') : tr('enabled/disabled 发送 thinking.type；其他值作为顶层 thinking 原样发送。') }}</small>
+          </label>
+          <label :for="`${reasoningControlId}-effort`">
+            <span :id="`${reasoningControlId}-effort-label`">{{ tr('推理强度（reasoning_effort）') }}</span>
+            <input :id="`${reasoningControlId}-effort`" v-model.trim="form.reasoning_effort" name="model-reasoning-effort" :aria-labelledby="`${reasoningControlId}-effort-label`" :aria-describedby="`${reasoningControlId}-effort-help`"
+              :list="`${reasoningControlId}-effort-values`" :placeholder="tr('按模型默认，不发送参数')" maxlength="64" autocomplete="off" />
+            <datalist :id="`${reasoningControlId}-effort-values`">
+              <option v-for="level in ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']" :key="level" :value="level" />
+            </datalist>
+            <small :id="`${reasoningControlId}-effort-help`">{{ tr('可选常用档位，也可输入上游支持的其他值。不同模型的支持范围不同。') }}</small>
+          </label>
+        </div>
+
+        <details v-if="selectedCategory.id === 'llm'" class="reasoning-reference">
+          <summary>{{ tr('常用模型参数参考') }}</summary>
+          <p>{{ tr('按模型版本和调用接口填写；以下仅为参考，不会自动修改参数。') }}</p>
+          <dl>
+            <dt>DeepSeek · Flash / V4</dt>
+            <dd>{{ tr('强度 low / high / max，默认 high；Responses 中 none 关闭思考。Chat 接口也可用 thinking 的 enabled / disabled 开关。') }} <a href="https://api-docs.deepseek.com/guides/thinking_mode/" target="_blank" rel="noopener noreferrer">{{ tr('DeepSeek 官方文档') }}</a></dd>
+            <dt>{{ tr('豆包 · Seed 2.1 Pro / Lite（260915）') }}</dt>
+            <dd>{{ tr('强度 minimal / low / medium / high，默认 high；thinking 支持 enabled / disabled。其他版本的档位可能不同。') }} <a href="https://docs.volcengine.com/docs/ark/model-parameter-support" target="_blank" rel="noopener noreferrer">{{ tr('豆包官方文档') }}</a></dd>
+            <dt>GLM · 5.3</dt>
+            <dd>{{ tr('强度 low / high / max；不支持关闭思考，需要较快响应时可用 low。不要将这组取值直接套用到旧版 GLM。') }} <a href="https://docs.bigmodel.cn/cn/guide/capabilities/thinking" target="_blank" rel="noopener noreferrer">{{ tr('GLM 官方文档') }}</a></dd>
+            <dt>{{ tr('小米 MiMo') }}</dt>
+            <dd>{{ tr('Chat 接口使用 thinking 的 enabled / disabled；Responses 用 none 关闭，其余强度值目前都表示开启，并不区分推理强弱。') }} <a href="https://mimo.mi.com/docs/en-US/api/chat/responses" target="_blank" rel="noopener noreferrer">{{ tr('MiMo 官方文档') }}</a></dd>
+          </dl>
+          <small>{{ tr('中转通道可能有不同支持范围；不确定时留空，使用模型默认值。核对日期：2026-11-17。') }}</small>
+        </details>
 
         <label v-if="selectedCategoryId === 'llm' && !editingSyncedPricing" class="model-toggle">
           <input v-model="form.supports_tool_calls" type="checkbox" role="switch" :aria-label="tr('多轮工具调用')" />
@@ -863,6 +901,16 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
 </template>
 
 <style scoped>
+.reasoning-controls { margin-block: 14px; }
+.reasoning-reference { margin-block: 14px; color: var(--app-text-secondary); font-size: 12px; line-height: 1.7; }
+.reasoning-reference summary { cursor: pointer; color: var(--app-text); padding-block: 6px; }
+.reasoning-reference summary:hover, .reasoning-reference a:hover { color: var(--app-accent); }
+.reasoning-reference summary:focus-visible, .reasoning-reference a:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+.reasoning-reference dt { color: var(--app-text); font-weight: 600; margin-block-start: 12px; }
+.reasoning-reference dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.reasoning-reference a { color: var(--app-text); text-decoration: underline; text-underline-offset: 3px; }
+.reasoning-reference p { margin-block: 8px; }
+.reasoning-controls input:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
 .model-settings-page { min-height: 100%; padding: 36px 22px 80px; color: #303442; background: #fff; }
 .model-settings-header { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 0 0 28px; padding-bottom: 28px; border-bottom: 1px solid #eceef3; }
 .model-settings-header > div, .model-config-section > header > div { display: grid; gap: 5px; }
@@ -960,7 +1008,7 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
 .model-form-grid .json-capability-field > input::after { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--app-surface); box-shadow: 0 1px 4px rgb(0 0 0 / 24%); content: ''; transition: transform .16s ease; }
 .model-form-grid .json-capability-field > input:checked { background: var(--app-accent); }
 .model-form-grid .json-capability-field > input:checked::after { transform: translateX(16px); }
-.model-form-grid .json-capability-field > input:focus-visible { outline: 3px solid color-mix(in srgb,var(--app-accent) 20%,transparent); outline-offset: 2px; box-shadow: none; }
+.model-form-grid .json-capability-field > input:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; box-shadow: none; }
 .input-with-icon { position: relative; display: flex; align-items: center; }
 .input-with-icon > svg { position: absolute; left: 11px; z-index: 1; color: var(--app-text-muted); }
 .input-with-icon > input { padding-left: 34px; }
@@ -1002,4 +1050,8 @@ onUnmounted(() => window.removeEventListener('keydown', onWindowKeydown))
   .model-form-grid label, .model-form-grid label.is-full { grid-column: 1; }
 }
 .enhancement-resolution-options{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0}.enhancement-resolution-options label{display:flex;gap:6px;align-items:center}.enhancement-resolution-options input{width:auto;min-height:auto}
+
+.model-form-grid.reasoning-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.model-form-grid.reasoning-controls > label { grid-column: auto; }
+@media (max-width: 600px) { .model-form-grid.reasoning-controls { grid-template-columns: minmax(0, 1fr); } }
 </style>

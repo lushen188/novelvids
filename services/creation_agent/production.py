@@ -9,7 +9,7 @@ from models.creation_agent import AgentConversation, AgentMessage
 from services.creation_agent.skill_execution import (
     SkillExecution,
     current_execution,
-    require_agent,
+    require_workflow_model,
 )
 from utils.enums import AiTaskTypeEnum, TaskStatusEnum
 
@@ -21,9 +21,7 @@ async def conversation_for_task(task):
     if message:
         return message
     params = task.request_params
-    chosen, _ = await require_agent(
-        params.get("team_id"), params["assistant_model_config_id"]
-    )
+    chosen, _ = await require_workflow_model(params)
     from services.creation_agent.handler import authorize_run
     from services.creation_agent.sessions import agent_sessions
     ctx = await authorize_run(params)
@@ -33,6 +31,7 @@ async def conversation_for_task(task):
     labels = {
         "blocking_maps": ("补齐本集空间定位图", "Complete shot blocking diagrams"),
         "storyboard_sheet": ("生成线稿故事版", "Generate line-art storyboard"),
+        "storyboard_sheet_edit": ("修改线稿故事版", "Edit storyboard sheet"),
         "image": ("生成图片", "Generate image"),
         "assets": ("提取资产", "Extract assets"),
         "storyboard": ("生成分镜", "Generate storyboard"),
@@ -118,7 +117,9 @@ async def conversation_for_task(task):
     await AgentConversation.filter(id=conversation.id).update(updated_at=datetime.now(timezone.utc))
     # A nested production task must not replace the active conversational run.
     active = await AiTask.get_or_none(id=conversation.active_task_id) if conversation.active_task_id else None
-    if active is None or active.status not in {TaskStatusEnum.pending, TaskStatusEnum.running, TaskStatusEnum.queued}:
+    plan_run = await AiTask.get_or_none(id=params['creation_run_id']) if params.get('creation_run_id') else None
+    detached = bool(plan_run and plan_run.request_params.get('background'))
+    if not detached and (active is None or active.status not in {TaskStatusEnum.pending, TaskStatusEnum.running, TaskStatusEnum.queued}):
         await AgentConversation.filter(id=conversation.id, active_task_id=conversation.active_task_id).update(active_task_id=task.id)
     return message
 
@@ -142,7 +143,7 @@ async def run_production(task, handler):
         from services.balance import ensure_solvent
 
         await ensure_solvent(params.get("team_id"), params.get("user_id"))
-        await require_agent(params.get("team_id"), params["assistant_model_config_id"])
+        await require_workflow_model(params)
         if not await AiTask.filter(
             id=task.id, status=TaskStatusEnum.running.value
         ).exists():
@@ -184,13 +185,14 @@ async def run_production(task, handler):
         },
         message,
         before_request,
+        strict_streaming=task.task_type == AiTaskTypeEnum.storyboard.value,
     )
     from utils.prompt_language import skill_workflow
 
     mode_token = skill_workflow.set(True)
     token = current_execution.set(execution)
     try:
-        if task.task_type in {1, 2, 3, 4} and params.get('operation') in {None, 'assets', 'storyboard', 'image', 'video'} and not params.get('creation_plan_id') and 'creation_planning' in execution.snapshot.contents:
+        if not params.get('output_contract') and task.task_type in {1, 2, 3, 4} and params.get('operation') in {None, 'assets', 'storyboard', 'image', 'video'} and not params.get('creation_plan_id') and 'creation_planning' in execution.snapshot.contents:
             from services.creation_agent.direct_plan import prepare_direct_plan
             await prepare_direct_plan(task, execution)
             params.update({key: execution.params[key] for key in ('creation_plan_id', 'creation_step_id', 'creation_run_id')})
@@ -228,6 +230,15 @@ async def run_production(task, handler):
 
 
 async def finish_production_message(task):
+    from services.media_tasks import is_media_task
+    if is_media_task(task.request_params):
+        if task.request_params.get('operation') == 'video' and task.status in {4, 5}:
+            from models.video import Video
+            video = await Video.get_or_none(id=task.request_params.get('video_id'))
+            if video and video.status == 6 and not video.external_task_id:
+                await Video.filter(id=video.id, status=6).update(status=task.status,
+                    metadata={**video.metadata, 'error': task.error_message, 'stage': task.stage})
+        return
     if task.request_params.get('operation') == 'creation_plan':
         await AgentConversation.filter(active_task_id=task.id).update(active_task_id=None)
         from services.creation_agent.event_log import agent_event_log
@@ -265,6 +276,7 @@ async def finish_production_message(task):
     english = task.request_params.get("prompt_language", "en") == "en"
     labels = {
         "storyboard_sheet": ("生成线稿故事版", "Generate line-art storyboard"),
+        "storyboard_sheet_edit": ("修改线稿故事版", "Edit storyboard sheet"),
         3: ("已完成", "Completed"),
         4: ("任务未完成", "Task failed"),
         5: ("后续步骤已停止", "Further steps stopped"),

@@ -1,3 +1,4 @@
+import type { SheetHistory } from '@/shared/storyboardSheetHistory'
 import { generationRequest, finishGenerationRequest } from '@/shared/generationRequests'
 
 import { tr } from '@/i18n'
@@ -61,7 +62,7 @@ export function authHeaders(): Record<string, string> {
   return headers
 }
 
-const isGenerationRequest = (url: string) => /^\/(?:asset\/(?:reference\/\d+|reference-batch)|chapter\/extract\/\d+|novel\/\d+\/(?:analyze|cover)|scene\/(?:generate\/|\d+\/storyboard-sheet)|video\/(?:generate\/|merge|exports(?:\/\d+\/enhance|\/video\/\d+)?))(?:\?|$)/.test(url)
+const isGenerationRequest = (url: string) => /^\/(?:asset\/(?:reference\/\d+|reference-batch)|chapter\/extract\/\d+|novel\/\d+\/(?:analyze|cover)|scene\/(?:generate\/|\d+\/storyboard-sheet)|video\/(?:generate\/|batch|merge|exports(?:\/\d+\/enhance|\/video\/\d+)?))(?:\?|$)/.test(url)
 
 export class ApiRequestError extends Error {
   constructor(message: string, readonly code: number, readonly httpStatus: number) { super(message) }
@@ -354,19 +355,19 @@ export const api = {
   deleteNovel: (id: number) => request<SingleResponse<null>>(`/novel/${id}`, { method: 'DELETE' }),
   splitNovel: (id: number) => request<SingleResponse<Novel>>(`/novel/${id}/split`, { method: 'POST' }),
   generateNovelCover: (id: number, modelConfigId: number) => request<SingleResponse<AiTask>>(`/novel/${id}/cover${qs({ model_config_id: modelConfigId })}`, { method: 'POST' }),
-  analyzeNovel: (id: number, coverModelConfigId?: number, assistantModelConfigId?: number) => request<SingleResponse<AiTask>>(`/novel/${id}/analyze${qs({ cover_model_config_id: coverModelConfigId, assistant_model_config_id: assistantModelConfigId })}`, { method: 'POST' }),
+  analyzeNovel: (id: number, coverModelConfigId?: number, assistantModelConfigId?: number, skillId?: number) => request<SingleResponse<AiTask>>(`/novel/${id}/analyze${qs({ cover_model_config_id: coverModelConfigId, assistant_model_config_id: assistantModelConfigId, skill_id: skillId })}`, { method: 'POST' }),
   novelAnalysis: (id: number) => request<SingleResponse<AiTask | null>>(`/novel/${id}/analysis`),
   chapters: (novelId: number) => requestAllPages<Chapter>(
     (page, pageSize) => `/chapter${qs({ novel_id: novelId, page, page_size: pageSize, sort: 'number' })}`,
   ),
   chapter: (id: number) => request<SingleResponse<Chapter>>(`/chapter/${id}`),
-  generateScreenplay: (id: number, expectedScreenplay?: string, assistantModelConfigId?: number) => request<SingleResponse<AiTask>>(`/chapter/${id}/screenplay`, {
-    method: 'POST', body: JSON.stringify({ expected_screenplay: expectedScreenplay, assistant_model_config_id: assistantModelConfigId }),
+  generateScreenplay: (id: number, expectedScreenplay?: string, assistantModelConfigId?: number, skillId?: number) => request<SingleResponse<AiTask>>(`/chapter/${id}/screenplay`, {
+    method: 'POST', body: JSON.stringify({ expected_screenplay: expectedScreenplay, assistant_model_config_id: assistantModelConfigId, skill_id: skillId }),
   }),
   createChapter: (data: Partial<Chapter>) => request<SingleResponse<Chapter>>('/chapter', { method: 'POST', body: JSON.stringify(data) }),
   updateChapter: (id: number, data: Partial<Chapter>) => request<SingleResponse<Chapter>>(`/chapter/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteChapter: (id: number) => request<SingleResponse<null>>(`/chapter/${id}`, { method: 'DELETE' }),
-  extract: (chapterId: number, conversationId?: number, assistantModelConfigId?: number) => request<SingleResponse<AiTask>>(`/chapter/extract/${chapterId}`, { method: 'POST', body: JSON.stringify({ conversation_id: conversationId, assistant_model_config_id: assistantModelConfigId }) }),
+  extract: (chapterId: number, conversationId?: number, assistantModelConfigId?: number, skillId?: number) => request<SingleResponse<AiTask>>(`/chapter/extract/${chapterId}`, { method: 'POST', body: JSON.stringify({ conversation_id: conversationId, assistant_model_config_id: assistantModelConfigId, skill_id: skillId }) }),
   latestExtraction: (chapterId: number) => request<SingleResponse<AiTask | null>>(`/chapter/extract/${chapterId}/latest`),
   assets: (novelId: number, page = 1, pageSize = 100, chapterId?: number) => request<PaginationResponse<Asset>>(`/asset${qs({ novel_id: novelId, page, page_size: pageSize, chapter_id: chapterId })}`),
   referencePromptPreview: (data: Pick<Asset, 'asset_type' | 'canonical_name' | 'base_traits' | 'description' | 'metadata'> & { aspect_ratio?: string }) => request<SingleResponse<AssetReferencePromptPreview>>('/asset/reference-prompt/preview', { method: 'POST', body: JSON.stringify(data) }),
@@ -400,13 +401,15 @@ export const api = {
   insertSceneAfter: (sceneId: number) => request<SingleResponse<Scene>>(`/scene/${sceneId}/insert-after`, { method: 'POST' }),
   updateScene: (id: number, data: Partial<Scene>, expectedPrompt?: string | null) => request<SingleResponse<Scene>>(`/scene/${id}`, { method: 'PATCH', body: JSON.stringify({ ...data, expected_prompt: expectedPrompt }) }),
   deleteScene: (id: number) => request<SingleResponse<null>>(`/scene/${id}`, { method: 'DELETE' }),
+  storyboardSheetHistory: (sceneId: number) => request<SingleResponse<SheetHistory>>(`/scene/${sceneId}/storyboard-sheet/history`),
+  restoreStoryboardSheet: (sceneId: number, payload: {task_id: string; source: boolean; expected_revision: string}) => request<SingleResponse<Scene>>(`/scene/${sceneId}/storyboard-sheet/restore`, {method:'POST', body:JSON.stringify(payload)}),
   generateStoryboardSheet: async (sceneId: number, modelConfigId: number, restart = false) => {
     const url = `/scene/${sceneId}/storyboard-sheet${qs({ model_config_id: modelConfigId })}`
     if (restart) await resetGenerationRequest(url)
     return request<SingleResponse<AiTask>>(url, { method: 'POST' })
   },
   generateChapterSheets: (chapterId: number, modelConfigId: number) => request<SingleResponse<string[]>>(`/scene/chapter/${chapterId}/storyboard-sheets${qs({model_config_id: modelConfigId})}`, {method: 'POST'}),
-  generateScenes: (chapterId: number, replaceExisting = false, assistantModelConfigId?: number, sheetModelConfigId?: number, generateBlockingMaps = false) => request<SingleResponse<AiTask>>('/scene/generate/', { method: 'POST', body: JSON.stringify({ chapter_id: chapterId, generate_blocking_maps: generateBlockingMaps, sheet_model_config_id: sheetModelConfigId, assistant_model_config_id: assistantModelConfigId, ...(replaceExisting ? { replace_existing: true } : {}) }) }),
+  generateScenes: (chapterId: number, replaceExisting = false, assistantModelConfigId?: number, sheetModelConfigId?: number, generateBlockingMaps = false, skillId?: number) => request<SingleResponse<AiTask>>('/scene/generate/', { method: 'POST', body: JSON.stringify({ chapter_id: chapterId, skill_id: skillId, generate_blocking_maps: generateBlockingMaps, sheet_model_config_id: sheetModelConfigId, assistant_model_config_id: assistantModelConfigId, ...(replaceExisting ? { replace_existing: true } : {}) }) }),
   storyboardStrategies: () => request<SingleResponse<StoryboardStrategy[]>>('/scene/strategies'),
   videos: (sceneId?: number) => request<PaginationResponse<Video>>(`/video${qs({ page: 1, page_size: 100, sort: '-id', scene_id: sceneId })}`),
   videoGenerationHistory: (sceneId: number) => request<SingleResponse<Video[]>>(`/video/scene/${sceneId}/generation-history`),
@@ -513,6 +516,7 @@ export const api = {
   activateConfig: (id: number) => request<SingleResponse<AiModelConfig>>(`/config/${id}/activate`, { method: 'POST' }),
   deactivateConfig: (id: number) => request<SingleResponse<AiModelConfig>>(`/config/${id}/deactivate`, { method: 'POST' }),
   deleteConfig: (id: number) => request<SingleResponse<null>>(`/config/${id}`, { method: 'DELETE' }),
+  retryTask: (id: string) => request<SingleResponse<AiTask>>(`/task/${id}/retry`, { method: 'POST' }),
   task: (id: string, signal?: AbortSignal) => request<SingleResponse<AiTask>>(`/task/${id}`, signal ? { signal } : undefined),
   billingStatementParties: () => request<SingleResponse<BillingStatementParties>>('/billing/statements/parties'),
   billingStatements: (params: BillingStatementFilters & { page?: number; page_size?: number } = {}) => request<SingleResponse<BillingStatement>>(`/billing/statements${qs({ ...params })}`),

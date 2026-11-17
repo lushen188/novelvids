@@ -77,7 +77,9 @@ class UnifiedVideoGenerator(BaseVideoGenerator):
             platform_call = await begin_platform_call(self.config, billing_type="video", video_id=billing_video_id,
                 task_id=current_task_id.get(), request_key=payload["request_id"])
             headers["Idempotency-Key"] = str(platform_call.request_key)
-        async with httpx.AsyncClient(timeout=600) as client:
+        from services.remake.capacity_transport import PlatformCapacityTransport
+        transport = {"transport": PlatformCapacityTransport()} if self.config.api_protocol == "novelvids" else {}
+        async with httpx.AsyncClient(timeout=600, **transport) as client:
             try:
                 response = await client.request(method, _endpoint(self.config.base_url, task_id),
                     headers=headers,
@@ -102,7 +104,8 @@ class UnifiedVideoGenerator(BaseVideoGenerator):
         if response.status_code >= 400:
             raise VideoProviderError(public_provider_error(data, status_code=response.status_code,
                 transport_request_id=request_id(response), secrets=(self.config.api_key,)),
-                submission_uncertain=submitting and (response.status_code >= 500 or response.status_code == 408))
+                submission_uncertain=submitting and (response.status_code >= 500 or response.status_code == 408),
+                status_code=response.status_code)
         if not isinstance(data, dict):
             raise VideoProviderError(localized_message('视频接口返回了无效响应'), submission_uncertain=submitting)
         if data.get("error"):
