@@ -7,6 +7,7 @@ import sys
 from config import settings
 from models.config import AiModelConfig, StudioPlatformConnection
 from services import studio_platform
+from services.model_resolution import resolve_scope_configs
 
 
 @pytest.mark.asyncio
