@@ -1,4 +1,10 @@
-"""兼容不同 OpenAI-compatible 服务的 JSON 输出调用。"""
+"""兼容不同 OpenAI-compatible 服务的 JSON 输出调用。
+
+本地二开兼容层：上游 v1.15.0 删除了 services/llm/json_output.py，
+本文件完整保留 v1.14.0 的 create_json_completion 实现，供本地新增的
+services/voice_design.py（MiMo 自动音色）继续使用。
+唯一适配：prompts.schema 已被上游删除，JSON 指令改为内联生成。
+"""
 
 from utils.messages import localized_message
 
@@ -66,8 +72,8 @@ def _extract_json(content: str) -> Any:
 
 
 def _json_instruction(response_model: type[BaseModel], prompt_language: str = "zh") -> str:
-    from prompts.schema import json_instruction
-    return json_instruction(response_model.model_json_schema(), prompt_language)
+    from prompts.skill_pack import read_skill
+    return read_skill("structured") + "\nlanguage=" + prompt_language + "\n" + json.dumps(response_model.model_json_schema(), ensure_ascii=False)
 
 
 async def create_json_completion(

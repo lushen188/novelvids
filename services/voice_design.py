@@ -28,7 +28,7 @@ from models.asset_variant import AssetVariant
 from models.audio_reference import AudioReference
 from models.novel import Novel
 from services.audio_references import _create_reference, _validate_audio_file
-from services.llm.json_output import create_json_completion
+from services.llm_json_compat import create_json_completion
 from services.oss import make_upload_key, oss
 from utils.enums import AiTaskTypeEnum, AssetTypeEnum
 from utils.messages import localized_message

@@ -44,6 +44,7 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement | null>(null)
 const menu = ref<HTMLElement | null>(null)
+const menuTarget = ref<HTMLElement | string>('body')
 const open = ref(false)
 const search = ref('')
 const opensUp = ref(false)
@@ -78,6 +79,7 @@ async function toggleMenu(fromEnd = false) {
   if (props.disabled || !normalizedOptions.value.length) return
   open.value = !open.value
   if (!open.value) return
+  menuTarget.value = root.value?.closest('dialog') ?? 'body'
   search.value = ''
   if (root.value) {
     const style = getComputedStyle(root.value)
@@ -211,7 +213,7 @@ onUnmounted(() => {
       <ChevronDown class="app-select__chevron" :size="14" />
     </AppButton>
 
-    <Teleport to="body">
+    <Teleport :to="menuTarget">
       <div
         v-if="open"
         ref="menu"
