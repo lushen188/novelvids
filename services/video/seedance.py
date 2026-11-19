@@ -6,6 +6,7 @@ from utils.messages import localized_message
 
 import json
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -135,18 +136,54 @@ class SeedanceGenerator(BaseVideoGenerator):
             generate_audio,
             return_last_frame,
         )
+        # 中转渠道能力裁剪（本地二开回迁）：部分中转渠道按白名单校验可选参数，
+        # 且同类参考音频 role 只允许一个。400 拒绝不计费，命中这两类可修正的
+        # 拒绝时在内存中裁剪请求后原地重试，而不是直接判死。
+        audio_trimmed = False
         async with httpx.AsyncClient(timeout=600) as client:
-            try:
-                resp = await client.post(url, headers=headers, json=payload)
-            except httpx.HTTPError as exc:
-                logger.warning(
-                    "seedance_network_error endpoint=%s error_type=%s",
-                    safe_url,
-                    type(exc).__name__,
-                )
-                not_sent = isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout))
-                raise SeedanceGenerationError(localized_message('视频供应商网络请求失败'),
-                    submission_uncertain=not not_sent) from exc
+            for _attempt in range(6):
+                try:
+                    resp = await client.post(url, headers=headers, json=payload)
+                except httpx.HTTPError as exc:
+                    logger.warning(
+                        "seedance_network_error endpoint=%s error_type=%s",
+                        safe_url,
+                        type(exc).__name__,
+                    )
+                    not_sent = isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout))
+                    raise SeedanceGenerationError(localized_message('视频供应商网络请求失败'),
+                        submission_uncertain=not not_sent) from exc
+                if resp.status_code < 400:
+                    break
+                detail = _http_provider_error(resp) or ""
+                unknown_param = re.search(r"未知模型参数[:：]\s*([\w_]+)", detail)
+                if resp.status_code == 400 and unknown_param and unknown_param.group(1) in payload:
+                    stripped = unknown_param.group(1)
+                    logger.warning("seedance_param_stripped endpoint=%s param=%s", safe_url, stripped)
+                    payload.pop(stripped, None)
+                    continue
+                if (
+                    resp.status_code == 400
+                    and not audio_trimmed
+                    and "role may appear only once" in detail
+                    and sum(1 for item in payload["content"] if item.get("role") == "reference_audio") > 1
+                ):
+                    kept = False
+                    trimmed_content = []
+                    for item in payload["content"]:
+                        if item.get("role") == "reference_audio":
+                            if kept:
+                                continue
+                            kept = True
+                        trimmed_content.append(item)
+                    payload["content"] = trimmed_content
+                    audio_trimmed = True
+                    logger.warning(
+                        "seedance_audio_trimmed endpoint=%s kept=1（当前渠道每个镜头仅支持 1 个参考音频，其余音色引用已丢弃）",
+                        safe_url,
+                    )
+                    continue
+                break
 
         request_id = _request_id(resp)
         check_upstream_response(resp)
