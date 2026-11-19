@@ -109,7 +109,7 @@ async def _download_video(remote_url: str, video_id: int, *, keep_local=False) -
     with NamedTemporaryFile(dir=video_dir, suffix=".download", delete=False) as target:
         temp_path = Path(target.name)
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
                 async with client.stream("GET", remote_url) as resp:
                     resp.raise_for_status()
                     async for chunk in resp.aiter_bytes(chunk_size=64*1024):
@@ -159,7 +159,7 @@ async def _download_last_frame(remote_url: str, video_id: int, *, keep_local=Fal
     temporary = directory / f".last-frame-{video_id}.downloading"
     size_bytes = 0
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
             async with client.stream("GET", remote_url) as response:
                 response.raise_for_status()
                 with temporary.open("wb") as target:
