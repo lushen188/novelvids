@@ -2,6 +2,8 @@ from api._production_request import production_request
 
 from utils.messages import localized_message
 from fastapi import APIRouter, Depends, BackgroundTasks, Query, HTTPException
+from pydantic import Field
+from typing import Annotated
 from uuid import UUID
 
 from auth.deps import (
@@ -117,11 +119,17 @@ async def patch_asset(
 async def get_asset_list(
     params: QueryParams = Depends(get_list_params),
     ctx: AuthContext = Depends(get_auth_context),
+    source_chapter_number: list[Annotated[int, Field(gt=0)]] | None = Query(
+        None, description="可重复传入章节序号，返回出现在任意所选章节的资产",
+    ),
 ):
     base_query = None
     if ctx.team_id is not None:
         base_query = Asset.filter(novel__team_id=ctx.team_id)
-    assets = await asset_controller.list(params, AssetBriefOut, base_query=base_query)
+    params.filters.pop("source_chapter_number", None)
+    assets = await asset_controller.list(
+        params, AssetBriefOut, base_query=base_query, source_chapter_numbers=source_chapter_number,
+    )
     return ResponseSchema(data=assets)
 
 
@@ -179,6 +187,25 @@ async def active_asset_generations(
 ):
     await ensure_novel_access(novel_id, ctx)
     return ResponseSchema(data=await asset_controller.active_generations(novel_id))
+
+
+@router.get(
+    "/{asset_id}/deletion-impact", summary="查看永久删除资产影响的分镜",
+    response_model=ResponseSchema[list[dict[str, int]]],
+)
+async def get_asset_deletion_impact(
+    asset_id: int,
+    variant_id: int | None = Query(None, gt=0),
+    _: AuthContext = Depends(require_asset_access),
+):
+    from models.asset_variant import AssetVariant
+    from services.creative_deletion import affected_asset_scenes
+
+    asset = await asset_controller.get(asset_id)
+    variant = await AssetVariant.get_or_none(id=variant_id, asset_id=asset_id)
+    if variant_id is not None and variant is None:
+        raise HTTPException(404, localized_message("资产形态不存在"))
+    return ResponseSchema(data=await affected_asset_scenes(asset, variant))
 
 
 @router.get(

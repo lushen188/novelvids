@@ -371,7 +371,11 @@ export const api = {
   latestExtraction: (chapterId: number) => request<SingleResponse<AiTask | null>>(`/chapter/extract/${chapterId}/latest`),
   assets: (novelId: number, page = 1, pageSize = 100, chapterId?: number) => request<PaginationResponse<Asset>>(`/asset${qs({ novel_id: novelId, page, page_size: pageSize, chapter_id: chapterId })}`),
   referencePromptPreview: (data: Pick<Asset, 'asset_type' | 'canonical_name' | 'base_traits' | 'description' | 'metadata'> & { aspect_ratio?: string }) => request<SingleResponse<AssetReferencePromptPreview>>('/asset/reference-prompt/preview', { method: 'POST', body: JSON.stringify(data) }),
-  projectAssetLibrary: (novelId: number, page = 1, search = '', pageSize = 24, assetType?: number) => request<PaginationResponse<Asset>>(`/asset${qs({ novel_id: novelId, asset_type: assetType, page, page_size: pageSize, search, sort: 'canonical_name' })}`),
+  projectAssetLibrary: (novelId: number, page = 1, search = '', pageSize = 24, assetType?: number, sourceChapters: number[] = []) => {
+    const query = new URLSearchParams(qs({ novel_id: novelId, asset_type: assetType, page, page_size: pageSize, search, sort: 'canonical_name' }))
+    for (const number of sourceChapters) query.append('source_chapter_number', String(number))
+    return request<PaginationResponse<Asset>>(`/asset?${query}`)
+  },
   publicAssetLibrary: (assetType: number, page = 1, search = '', pageSize = 24) => request<PaginationResponse<Asset>>(`/resource-library/catalog/project-assets${qs({ asset_type: assetType, page, page_size: pageSize, search })}`),
   asset: (id: number) => request<SingleResponse<Asset>>(`/asset/${id}`),
   deleteFailedAssetGeneration: (assetId: number, taskId: string) => request<SingleResponse<null>>(`/asset/${assetId}/generation-history/${taskId}`, { method: 'DELETE' }),
@@ -382,6 +386,9 @@ export const api = {
   createAsset: (data: Partial<Asset> & { novel_id: number; chapter_id?: number; asset_type: number; canonical_name: string }) => request<SingleResponse<Asset>>('/asset', { method: 'POST', body: JSON.stringify(data) }),
   updateAsset: (id: number, data: Partial<Asset>, expectedPrompt?: string | null) => request<SingleResponse<Asset>>(`/asset/${id}`, { method: 'PATCH', body: JSON.stringify({ ...data, expected_prompt: expectedPrompt }) }),
   deleteAsset: (id: number) => request<SingleResponse<null>>(`/asset/${id}`, { method: 'DELETE' }),
+  assetDeletionImpact: (id: number, variantId?: number) => request<SingleResponse<{ chapter_number: number; sequence: number }[]>>(
+    `/asset/${id}/deletion-impact${variantId === undefined ? '' : `?variant_id=${variantId}`}`,
+  ),
   mergeAssets: (sourceAssetId: number, targetAssetId: number) => request<SingleResponse<AssetMergeResult>>('/asset/merge', { method: 'POST', body: JSON.stringify({ source_asset_id: sourceAssetId, target_asset_id: targetAssetId }) }),
   reuseAsset: (assetId: number, chapterId: number) => request<SingleResponse<Asset>>(`/asset/${assetId}/chapters/${chapterId}`, { method: 'POST' }),
   assetVariants: (assetId: number) => request<SingleResponse<AssetVariant[]>>(`/asset/${assetId}/variants`),
@@ -453,11 +460,20 @@ export const api = {
   },
   queryVideo: (id: number, signal?: AbortSignal) => request<SingleResponse<Video>>(`/video/query/${id}`, signal ? { signal } : undefined),
   deleteVideo: (id: number) => request<SingleResponse<null>>(`/video/${id}`, { method: 'DELETE' }),
+  deleteComposedVideo: (chapterId: number) => request<SingleResponse<null>>(`/video/merge/${chapterId}`, { method: 'DELETE' }),
   mergeChapterVideos: (chapterId: number, strict = false) => request<SingleResponse<VideoMergeResult>>('/video/merge', { method: 'POST', body: JSON.stringify({ chapter_id: chapterId, ...(strict ? { strict: true } : {}) }) }),
   audioReferences: (page = 1, search = '', filters: Record<string, string | number | undefined> = {}, novelId?: number) => request<PaginationResponse<AudioReference>>(`/media-library/audio-references${qs({ page, page_size: 24, search, sort: '-id', novel_id: novelId, ...filters })}`),
   trimAudioReference: (id: number, start: number, end: number, novelId?: number) => request<SingleResponse<AudioReference>>(`/media-library/audio-references/${id}/trim`, {
     method: 'POST',
     body: JSON.stringify({ start, end, novel_id: novelId }),
+  }),
+  autoDesignVoice: (payload: {
+    asset_id: number
+    variant_id: number | null
+    expected_voice_reference_id: number | null
+    expected_voice: string
+  }) => request<SingleResponse<{ reference: AudioReference; metadata: Record<string, unknown> }>>('/media-library/audio-references/auto-design', {
+    method: 'POST', body: JSON.stringify(payload),
   }),
   async uploadAudioReference(file: File, nickname: string, gender: string, novelId?: number) {
     if (!['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav'].includes(file.type) && !/\.(mp3|wav)$/i.test(file.name)) {
@@ -486,21 +502,6 @@ export const api = {
     const payload = await response.json()
     if (!response.ok || payload.code !== 0) throw new Error(payload.message || payload.detail || tr('参考音频上传失败'))
     return payload as SingleResponse<AudioReference>
-  },
-  async autoDesignVoice(assetId: number, variantId: number | null, novelId?: number) {
-    const response = await request<SingleResponse<{
-      reference: AudioReference
-      asset_id: number
-      asset_metadata: Record<string, unknown>
-      variant_id: number | null
-      variant_metadata: Record<string, unknown> | null
-      voice_description: string
-      sample_text: string
-    }>>('/media-library/audio-references/auto-design', {
-      method: 'POST',
-      body: JSON.stringify({ asset_id: assetId, variant_id: variantId, novel_id: novelId ?? null }),
-    })
-    return response.data
   },
   digitalHumans: (page = 1, search = '', filters: Record<string, string | number | undefined> = {}) => request<PaginationResponse<DigitalHuman>>(`/media-library/digital-humans${qs({ page, page_size: 24, search, sort: 'id', ...filters })}`),
   workbenchCapabilities: () => request<SingleResponse<WorkbenchCapabilities>>('/workbench/capabilities'),

@@ -3,7 +3,7 @@ import TaskSkillPicker from '@/features/creation-agent/TaskSkillPicker.vue'
 import StageModelSelect from '@/components/StageModelSelect.vue'
 import { tr } from '@/i18n'
 
-import { computed, onBeforeUnmount, onMounted, ref, shallowReactive, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowReactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BookOpenText,
@@ -11,6 +11,7 @@ import {
   Boxes,
   Check,
   Clapperboard,
+  FolderPlus,
   ImagePlus,
   Layers3,
   LoaderCircle,
@@ -21,16 +22,19 @@ import {
   Trash2,
   Upload,
   UsersRound,
+  X,
 } from 'lucide-vue-next'
 import AppBadge from '@/components/AppBadge.vue'
 import AssetCreateDialog from '@/components/AssetCreateDialog.vue'
 import AssetBatchGenerateDialog from '@/components/AssetBatchGenerateDialog.vue'
+import ChapterAssetReuseDialog from '@/components/ChapterAssetReuseDialog.vue'
 import AppButton from '@/components/AppButton.vue'
 import ShortDramaWorkspaceShell from '@/components/ShortDramaWorkspaceShell.vue'
 import { useCreationAgentStore } from '@/features/creation-agent/store'
+import { dismissWorkbenchNotice, isWorkbenchNoticeDismissed } from '@/features/workbench/interaction/dismissedNotices'
 import type { AgentChange } from '@/features/creation-agent/types'
 import { api, sleep, statusLabel } from '@/api'
-import { appConfirm } from '@/shared/confirmDialog'
+import { confirmAssetDeletion } from '@/shared/confirmCreativeDeletion'
 import { notice } from '@/shared/notice'
 import { fallbackImage } from '@/shared/mediaFallback'
 import { readShortDramaSettings } from '@/shared/shortDramaProject'
@@ -84,6 +88,7 @@ const editingName = ref(false)
 const nameDraft = ref('')
 const loading = ref(true)
 const showAssetDialog = ref(false)
+const showChapterAssetPicker = ref(false)
 const editingAsset = ref<Asset | null>(null)
 const editingVariantId = ref<number>()
 const assetDrawerMode = ref<'ai' | 'library' | 'upload'>('ai')
@@ -92,6 +97,8 @@ const batchGenerating = ref(false)
 const submittingExtraction = ref(false)
 const extractionTask = ref<AiTask | null>(null)
 const extractionSubmissionError = ref('')
+const dismissedExtractionId = ref('')
+const refreshAssetButton = ref<InstanceType<typeof AppButton> | null>(null)
 const generatingAssetIds = ref(new Set<number>())
 const failedAssetIds = ref(new Set<number>())
 const mergingAssetIds = ref(new Set<number>())
@@ -168,14 +175,23 @@ const extractionTaskActive = computed(() => {
   return status === TaskStatusEnum.PENDING || status === TaskStatusEnum.PROCESSING || status === TaskStatusEnum.QUEUED
 })
 const extractionBusy = computed(() => submittingExtraction.value || extractionTaskActive.value)
+const extractionTaskFailed = computed(() => extractionTask.value?.status === TaskStatusEnum.FAILED
+  || extractionTask.value?.status === TaskStatusEnum.CANCELLED)
 const extractionStatusVisible = computed(() => {
   if (extractionTask.value?.status === TaskStatusEnum.COMPLETED) return false
-  return submittingExtraction.value
-    || extractionTaskActive.value
-    || Boolean(extractionSubmissionError.value)
-    || extractionTask.value?.status === TaskStatusEnum.FAILED
-    || extractionTask.value?.status === TaskStatusEnum.CANCELLED
+  if (extractionBusy.value || extractionSubmissionError.value) return true
+  const task = extractionTask.value
+  return Boolean(task && extractionTaskFailed.value && task.id !== dismissedExtractionId.value
+    && !isWorkbenchNoticeDismissed(`asset-extraction:${task.id}`))
 })
+function dismissExtractionStatus() {
+  if (extractionTask.value && extractionTaskFailed.value) {
+    dismissedExtractionId.value = extractionTask.value.id
+    dismissWorkbenchNotice(`asset-extraction:${dismissedExtractionId.value}`)
+  }
+  extractionSubmissionError.value = ''
+  void nextTick(() => refreshAssetButton.value?.$el.focus())
+}
 const extractionStatusText = computed(() => (
   extractionSubmissionError.value
     ? tr('提交失败')
@@ -196,8 +212,7 @@ const extractionStatusMessage = computed(() => {
 const extractionStatusClass = computed(() => ({
   'is-running': extractionTaskActive.value || submittingExtraction.value,
   'is-error': Boolean(extractionSubmissionError.value)
-    || extractionTask.value?.status === TaskStatusEnum.FAILED
-    || extractionTask.value?.status === TaskStatusEnum.CANCELLED,
+    || extractionTaskFailed.value,
 }))
 
 async function loadProject(chapterId = selectedChapterId.value) {
@@ -474,6 +489,17 @@ function saveEditedAsset(asset: Asset) {
   if (editingAsset.value?.id === asset.id) editingAsset.value = asset
 }
 
+function addReusedAsset(asset: Asset, chapter: Chapter) {
+  if (asset.novel_id !== projectId.value || chapter.id !== selectedChapter.value?.id) return
+  workspaceRefreshVersion++
+  if (assetScope.value === 'chapter' && !assets.value.some(item => item.id === asset.id)) {
+    addCreatedAsset(asset)
+  } else {
+    saveEditedAsset(asset)
+  }
+  notice.success(tr('已将「{p0}」加入第 {p1} 章', { p0: asset.canonical_name, p1: chapter.number }))
+}
+
 function truncateText(value: string | undefined, maxLength: number) {
   const normalized = value?.trim() || ''
   return normalized.length > maxLength
@@ -482,13 +508,8 @@ function truncateText(value: string | undefined, maxLength: number) {
 }
 
 async function removeAsset(asset: Asset) {
-  if (!await appConfirm({
-    title: tr('删除{p0}「{p1}」？', { p0: activeTabConfig.value.label, p1: asset.canonical_name }),
-    message: tr('该资产及其参考图片将被删除，且无法恢复。'),
-    confirmLabel: tr('删除{p0}', { p0: activeTabConfig.value.label }),
-    tone: 'danger',
-  })) return
   try {
+    if (!await confirmAssetDeletion([{ id: asset.id, name: asset.canonical_name }])) return
     await api.deleteAsset(asset.id)
     assets.value = assets.value.filter(item => item.id !== asset.id)
     notice.success(tr('资产已删除'))
@@ -777,16 +798,23 @@ onBeforeUnmount(() => {
 
     <section class="manual-workspace">
       <header class="asset-toolbar">
-        <nav :aria-label="tr('项目资产类型')">
-          <AppButton v-for="tab in tabs" :key="tab.value" type="button" variant="ghost" size="sm" :active="activeTab === tab.value" @click="activeTab = tab.value">
-            <component :is="tab.icon" :size="17" />{{ tab.label }}
+        <div class="asset-toolbar-heading">
+          <nav :aria-label="tr('项目资产类型')">
+            <AppButton v-for="tab in tabs" :key="tab.value" type="button" variant="ghost" size="sm" :active="activeTab === tab.value" @click="activeTab = tab.value">
+              <component :is="tab.icon" :size="17" />{{ tab.label }}
+            </AppButton>
+          </nav>
+          <AppButton v-if="selectedChapter" type="button" variant="secondary" size="sm" aria-haspopup="dialog" :disabled="loading" @click="showChapterAssetPicker = true">
+            <FolderPlus :size="15" aria-hidden="true" />{{ tr('从项目加入本章') }}
           </AppButton>
-        </nav>
+        </div>
         <div class="asset-summary">
-          <span v-if="project.creationMode === 'agent'" class="chapter-context"><BookOpenText :size="13" />{{ selectedChapter ? tr('当前第 {p0} 章', { p0: selectedChapter.number }) : tr('未选择章节') }}</span>
-          <div v-if="project.creationMode === 'agent' && selectedChapter" class="asset-scope-switch" role="group" :aria-label="tr('资产范围')">
-            <AppButton type="button" variant="ghost" size="xs" :active="assetScope === 'project'" @click="setAssetScope('project')">{{ tr('全部项目') }}</AppButton>
-            <AppButton type="button" variant="ghost" size="xs" :active="assetScope === 'chapter'" @click="setAssetScope('chapter')">{{ tr('当前章节') }}</AppButton>
+          <div v-if="selectedChapter || project.creationMode === 'agent'" class="asset-chapter-controls">
+            <span class="chapter-context"><BookOpenText :size="13" />{{ selectedChapter ? tr('当前第 {p0} 章', { p0: selectedChapter.number }) : tr('未选择章节') }}</span>
+            <div v-if="selectedChapter" class="asset-scope-switch" role="group" :aria-label="tr('资产范围')">
+              <AppButton type="button" variant="ghost" size="xs" :active="assetScope === 'project'" :aria-pressed="assetScope === 'project'" @click="setAssetScope('project')">{{ tr('全部项目') }}</AppButton>
+              <AppButton type="button" variant="ghost" size="xs" :active="assetScope === 'chapter'" :aria-pressed="assetScope === 'chapter'" @click="setAssetScope('chapter')">{{ tr('当前章节') }}</AppButton>
+            </div>
           </div>
           <TaskSkillPicker v-if="project.creationMode === 'agent' && (visibleAssets.length || loading)" v-model="assetSkillId" task="assets" :disabled="extractionBusy" class="asset-skill-picker" />
           <StageModelSelect v-if="project.creationMode === 'agent' && (visibleAssets.length || loading)" v-model="stageModelId" :project-id="projectId" stage="assets" :label="tr('选择资产提取模型')" :disabled="extractionBusy" />
@@ -810,7 +838,7 @@ onBeforeUnmount(() => {
           <span><Check :size="13" />{{ tr('已完成') }} {{ completedCount }}</span>
           <span><i v-if="generatingCount" class="generating-summary-dot" />{{ tr('生成中') }} {{ generatingCount }}</span>
           <span>{{ tr('失败') }} {{ failedCount }}</span>
-          <AppButton type="button" variant="secondary" size="sm" icon-only :aria-label="tr('刷新')" @click="refreshWorkspaceState"><RefreshCw :size="14" /></AppButton>
+          <AppButton ref="refreshAssetButton" type="button" variant="secondary" size="sm" icon-only :aria-label="tr('刷新')" @click="refreshWorkspaceState"><RefreshCw :size="14" /></AppButton>
           <AppButton type="button" variant="primary" size="sm" @click="openAssetDialog()"><Plus :size="15" />{{ tr('添加') }}{{ activeTabConfig.label }}</AppButton>
           <AppButton type="button" variant="soft" size="sm" :loading="batchGenerating" :disabled="batchGenerating" @click="assets.length ? showBatchDialog = true : notice.info(tr('请先添加角色、场景或道具资产'))"><Layers3 v-if="!batchGenerating" :size="15" />{{ batchGenerating ? tr('批量生成中') : tr('批量生成') }}</AppButton>
         </div>
@@ -820,16 +848,20 @@ onBeforeUnmount(() => {
         v-if="project.creationMode === 'agent' && extractionStatusVisible"
         class="extraction-task-status"
         :class="extractionStatusClass"
-        role="status"
-        aria-live="polite"
       >
-        <span>
+        <span aria-hidden="true">
           <LoaderCircle v-if="extractionBusy" :size="19" />
           <RefreshCw v-else :size="19" />
         </span>
-        <div>
+        <div role="status" aria-atomic="true">
           <strong>{{ tr('第') }} {{ selectedChapter?.number || '-' }} {{ tr('章资产提取 ·') }} {{ extractionStatusText }}</strong>
           <p>{{ extractionStatusMessage }}</p>
+        </div>
+        <div v-if="extractionStatusClass['is-error'] && !extractionBusy" class="extraction-status-actions">
+          <AppButton type="button" variant="secondary" size="sm" :disabled="!selectedChapter || !stageModelId"
+            @click="extractSelectedChapterAssets">{{ tr('重新提取本章资产') }}</AppButton>
+          <AppButton type="button" variant="ghost" size="sm" icon-only :aria-label="tr('关闭资产提取提示')"
+            :title="tr('关闭资产提取提示')" @click="dismissExtractionStatus"><X :size="16" aria-hidden="true" /></AppButton>
         </div>
       </div>
 
@@ -837,7 +869,7 @@ onBeforeUnmount(() => {
       <div v-else-if="!visibleAssets.length" class="workspace-state empty-state">
         <span class="empty-icon"><component :is="activeTabConfig.icon" :size="32" /></span>
         <strong>{{ tr('暂无') }}{{ activeTabConfig.label }}</strong>
-        <p>{{ project.creationMode === 'agent' ? tr('从本章正文提取角色、场景与道具，再和助手一起完善画面。') : tr('添加第一个{p0}，开始搭建你的短剧世界。', { p0: activeTabConfig.label }) }}</p>
+        <p>{{ assetScope === 'chapter' ? tr('可从项目加入已有{p0}。', { p0: activeTabConfig.label }) : project.creationMode === 'agent' ? tr('从本章正文提取角色、场景与道具，再和助手一起完善画面。') : tr('添加第一个{p0}，开始搭建你的短剧世界。', { p0: activeTabConfig.label }) }}</p>
         <div v-if="project.creationMode === 'agent'" class="stage-actions">
           <TaskSkillPicker v-model="assetSkillId" task="assets" :disabled="extractionBusy" class="asset-skill-picker" />
           <StageModelSelect v-model="stageModelId" :project-id="projectId" stage="assets" :label="tr('选择资产提取模型')" :disabled="extractionBusy" />
@@ -929,6 +961,16 @@ onBeforeUnmount(() => {
         <Clapperboard :size="17" />{{ tr('前往分镜制作') }} </AppButton>
     </div>
 
+    <ChapterAssetReuseDialog
+      v-if="showChapterAssetPicker && selectedChapter"
+      :chapter="selectedChapter"
+      :chapters="chapters"
+      :asset-type="activeTabConfig.type"
+      :type-label="activeTabConfig.label"
+      @close="showChapterAssetPicker = false"
+      @added="addReusedAsset"
+    />
+
     <AssetCreateDialog
       :preview-assets="assets"
       :open="showAssetDialog"
@@ -972,6 +1014,7 @@ onBeforeUnmount(() => {
 .manual-workspace { padding: 24px 32px 32px; min-height: calc(100dvh - var(--short-drama-header-height,72px) - 80px); }
 .asset-skill-picker { width: auto; max-inline-size: 100%; text-align: start; }
 .asset-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; min-height: 50px; }
+.asset-toolbar-heading { display: flex; flex: 1 0 auto; max-inline-size: 100%; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; }
 .asset-toolbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .asset-toolbar nav button { position: relative; display: flex; align-items: center; gap: 7px; height: 42px; color: #6f7686; background: transparent; font-size: 15px; font-weight: 700; }
 .asset-toolbar nav button::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; border-radius: 2px; background: #6668f6; content: ''; opacity: 0; transform: scaleX(.6); transition: .18s ease; }
@@ -979,21 +1022,27 @@ onBeforeUnmount(() => {
 .asset-toolbar nav button.is-active::after { opacity: 1; transform: scaleX(1); }
 .asset-summary { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 10px; color: #858c9b; font-size: 12px; }
 .asset-summary span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.asset-summary .chapter-context { color: #5d5ff5; font-weight: 700; }
+.asset-chapter-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.asset-summary .chapter-context { color: var(--app-accent); font-weight: 700; }
 .asset-scope-switch { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid #e1e3ec; border-radius: 10px; background: #f4f5f9; }
 .asset-scope-switch button { min-height: 27px; padding: 0 9px; color: #7d8493; border-radius: 7px; }
 .asset-scope-switch button.is-active { color: #5658ec; background: #fff; box-shadow: 0 2px 7px rgb(45 49 72 / 8%); }
 .asset-summary > i { width: 1px; height: 13px; background: #dfe1e8; }
 .asset-summary strong { color: #303442; }
 .generating-summary-dot { width: 6px; height: 6px; border-radius: 999px; background: #686af5; box-shadow: 0 0 0 0 rgb(104 106 245 / 32%); animation: generation-pulse 1.6s ease-out infinite; }
-.extraction-task-status { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 14px; padding: 13px 15px; border: 1px solid #dfe2eb; border-radius: 12px; color: #626979; background: #fff; }
+.extraction-task-status { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: 14px; padding: 13px 15px; border: 1px solid #dfe2eb; border-radius: 12px; color: #626979; background: #fff; }
 .extraction-task-status > span { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 10px; color: #6668f6; background: #eff0ff; }
-.extraction-task-status > div { display: grid; min-width: 0; gap: 3px; }
-.extraction-task-status strong { color: #343947; font-size: 12px; }
+.extraction-task-status > [role="status"] { display: grid; min-width: 0; gap: 3px; overflow-wrap: anywhere; }
+.extraction-status-actions { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) {
+  .extraction-task-status { grid-template-columns: 38px minmax(0, 1fr); }
+  .extraction-status-actions { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; }
+}
+.extraction-task-status strong { color: var(--app-text); font-size: 12px; }
 .extraction-task-status p { margin: 0; font-size: 11px; line-height: 1.5; }
 .extraction-task-status small { overflow: hidden; color: #969dac; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .extraction-task-status.is-running { border-color: #cfd0fb; background: #f7f7ff; }
-.extraction-task-status.is-running svg { animation: spin .8s linear infinite; }
+.extraction-task-status.is-running > span svg { animation: spin .8s linear infinite; }
 .extraction-task-status.is-error { border-color: #f1cfd3; background: #fff7f8; }
 .extraction-task-status.is-error > span { color: #bd5f6b; background: #fdebed; }
 .icon-button,.text-action { display: inline-flex; align-items: center; gap: 6px; color: #424857; background: transparent; }
@@ -1088,6 +1137,7 @@ onBeforeUnmount(() => {
 @media (max-width: 900px) {
   .manual-workspace { padding: 16px 16px 100px; }
   .asset-toolbar { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .asset-toolbar-heading { align-self: stretch; }
   .asset-summary { width: 100%; overflow-x: auto; padding-bottom: 4px; }
   .asset-grid { grid-template-columns: 1fr; }
   .asset-merge-ready { top: auto; right: 16px; bottom: 78px; }

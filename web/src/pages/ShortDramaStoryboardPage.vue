@@ -42,7 +42,7 @@ import ChapterDetailDrawer from '@/components/ChapterDetailDrawer.vue'
 import DeferredVideoPlayer from '@/components/DeferredVideoPlayer.vue'
 import SceneAssetActionMenu from '@/components/SceneAssetActionMenu.vue'
 import SceneAssetVariantPicker, { type SceneAssetVariantSelection } from '@/components/SceneAssetVariantPicker.vue'
-import { boundPrompt, genericPrompt, modelPromptTexts, plainPrompt, resolveModelPrompt } from '@/shared/sceneModelPrompt'
+import { boundPrompt, cachedModelPrompt, genericPrompt, modelPromptTexts, plainPrompt, resolveModelPrompt } from '@/shared/sceneModelPrompt'
 import { unbindBlocking, withBlockingReference } from '@/shared/sceneBlockingReference'
 import { bindSheet, unbindSheet, includeSheet, sheetReference, SHEET_ID } from '@/shared/storyboardSheetReference'
 import StoryboardSheetCard from '@/components/StoryboardSheetCard.vue'
@@ -68,6 +68,7 @@ import { useWorkbenchStore } from '@/features/workbench/store/workbenchStore'
 import { api, ApiRequestError, mediaUrl, sleep, retryableStatusError } from '@/api'
 import { isAbortError, pollUntilTerminal } from '@/features/workbench/execution/workbenchAsync'
 import { appConfirm } from '@/shared/confirmDialog'
+import { useAuthStore } from '@/features/auth/authStore'
 import { fallbackImage } from '@/shared/mediaFallback'
 import { notice } from '@/shared/notice'
 import { episodeDisplayLabel, stripChapterOrdinal } from '@/shared/chapterTitle'
@@ -192,6 +193,8 @@ const savingVideoDefaults = ref(false)
 const persistedVideoModelId = ref<number | null>(null)
 let videoModelPreferenceSaveQueue: Promise<void> = Promise.resolve()
 const videos = ref<Record<number, VideoResult[]>>({})
+const auth = useAuthStore()
+const canDeleteVideos = computed(() => !auth.enabled || ['admin', 'creator', 'super'].includes(auth.role || ''))
 const videoPageEnabled = computed(() => chapterHasCompletedVideo(scenes.value, videos.value))
 const loading = ref(true)
 const generatingChapterIds = ref<Set<number>>(new Set())
@@ -1980,15 +1983,23 @@ async function toggleModelPrompt(scene: Scene) {
   await optimizeModelPrompt(scene, model)
 }
 
+function reusableModelPrompt(scene: Scene) {
+  const model = selectedVideoModelConfig.value
+  const draft = draftFor(scene)
+  if (!model || draft.promptModel) return undefined
+  return cachedModelPrompt(scene, model, optimizationInput(scene, model), draft.modelVersions)
+}
+
 async function optimizeModelPrompt(scene: Scene, model: VideoGenerationModel, reportError = true): Promise<boolean> {
   const draft = draftFor(scene)
   if (!draft.prompt.trim() || promptOptimizations.value.has(scene.id)) return false
   const facts = optimizationInput(scene, model)
   const input = JSON.stringify(facts)
+  const cached = cachedModelPrompt(scene, model, facts, draft.modelVersions)
   const controller = new AbortController()
-  promptOptimizations.value.set(scene.id, controller)
+  if (!cached) promptOptimizations.value.set(scene.id, controller)
   try {
-    const optimized = await resolveModelPrompt(scene, model, facts, draft.modelVersions, controller.signal)
+    const optimized = cached ?? await resolveModelPrompt(scene, model, facts, draft.modelVersions, controller.signal)
     if (controller.signal.aborted || selectedVideoModelConfig.value?.config_id !== model.config_id) return false
     if (JSON.stringify(optimizationInput(scene, model)) !== input) {
       if (reportError) notice.info(tr('分镜内容已修改，请按当前内容重新优化'))
@@ -2322,6 +2333,12 @@ async function selectVideoHistoryRecord(scene: Scene, record: VideoResult) {
   } catch (error) {
     notice.error((error as Error).message)
   }
+}
+
+function removeVideoHistoryRecord(scene: Scene, record: VideoResult) {
+  videoPolls.get(record.id)?.controller.abort()
+  videos.value[scene.id] = (videos.value[scene.id] || []).filter(item => item.id !== record.id)
+  void refreshVideoHistory(scene)
 }
 
 function syncInjectedLastFrame(result: VideoResult) {
@@ -2823,7 +2840,7 @@ onBeforeUnmount(() => {
                       :disabled="draftFor(scene).promptModel ? !draftFor(scene).generic : !selectedVideoModelConfig || !draftFor(scene).prompt.trim()"
                       @click="toggleModelPrompt(scene)">
                       <WandSparkles v-if="!promptOptimizations.has(scene.id)" :size="15" aria-hidden="true" />
-                      {{ promptOptimizations.has(scene.id) ? tr('优化中') : draftFor(scene).promptModel ? tr('使用通用 Prompt') : tr('模型 Skills 优化') }}
+                      {{ promptOptimizations.has(scene.id) ? tr('优化中') : draftFor(scene).promptModel ? tr('使用通用 Prompt') : reusableModelPrompt(scene) ? tr('使用优化稿') : tr('模型 Skills 优化') }}
                     </AppButton>
                     <AppButton variant="primary" size="md" :aria-label="tr('生成视频')" :disabled="promptOptimizations.has(scene.id) || !canGenerateSceneVideo(scene)" :loading="generatingVideoSceneIds.has(scene.id)" @click="generateVideo(scene)"><Sparkles v-if="!generatingVideoSceneIds.has(scene.id)" :size="14" />{{ generatingVideoSceneIds.has(scene.id) ? tr('生成中') : tr('生成') }}<BillingPriceTag v-if="!generatingVideoSceneIds.has(scene.id)" :cost="sceneVideoEstimate(scene)" :pricing="selectedVideoModelConfig?.pricing" /></AppButton>
                   </div>
@@ -2862,8 +2879,10 @@ onBeforeUnmount(() => {
                   :records="videos[scene.id] || []"
                   :current-id="currentVideoId(scene)"
                   :busy="refreshingVideoHistorySceneIds.has(scene.id)"
+                  :can-delete="canDeleteVideos"
                   @refresh="refreshVideoHistory(scene)"
                   @select="selectVideoHistoryRecord(scene, $event)"
+                  @deleted="removeVideoHistoryRecord(scene, $event)"
                   @retry="generateVideo(scene)"
                 />
               </aside>

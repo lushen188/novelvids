@@ -49,11 +49,17 @@ class AudioReferenceOssFinalizeIn(BaseModel):
 
 
 class AudioReferenceAutoDesignIn(BaseModel):
-    """AI 全自动音色链入参：按角色（可选衍生形态）设计并绑定音色。"""
+    model_config = ConfigDict(extra="forbid")
 
     asset_id: int = Field(ge=1)
     variant_id: int | None = Field(default=None, ge=1)
-    novel_id: int | None = Field(default=None, ge=1)
+    expected_voice_reference_id: int | None = Field(ge=1)
+    expected_voice: str = Field(default="", max_length=100)
+
+
+class AudioReferenceAutoDesignOut(BaseModel):
+    reference: AudioReferenceOut
+    metadata: dict
 
 
 class AudioReferenceTrimIn(BaseModel):

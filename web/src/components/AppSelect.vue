@@ -17,6 +17,7 @@ const props = withDefaults(defineProps<{
   modelValue: string
   options: Array<string | AppSelectOption>
   ariaLabel: string
+  ariaLabelledby?: string
   menuLabel?: string
   menuClass?: string
   menuZIndex?: number
@@ -197,6 +198,7 @@ onUnmounted(() => {
       variant="secondary"
       class="app-select__trigger"
       :aria-label="ariaLabel"
+      :aria-labelledby="ariaLabelledby"
       aria-haspopup="listbox"
       :aria-expanded="open"
       :disabled="disabled || !normalizedOptions.length"
