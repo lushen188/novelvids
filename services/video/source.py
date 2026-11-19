@@ -38,7 +38,7 @@ async def materialize_video_source(
         raise VideoSourceError("视频文件不存在")
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
             async with client.stream("GET", video_ref) as response:
                 response.raise_for_status()
                 with destination.open("wb") as target:
