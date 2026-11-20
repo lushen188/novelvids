@@ -302,38 +302,117 @@ class VideoController(CRUDBase[Video, dict, dict]):
         """补提已完成视频的尾帧，复用衔接写入，不查询或提交供应商任务。"""
         lock = self._query_locks.setdefault(video_id, asyncio.Lock())
         async with lock:
+            return await self._extract_last_frame_unlocked(video_id)
+
+    async def _extract_last_frame_unlocked(self, video_id: int) -> Video:
+        """尾帧补提核心逻辑；调用方须已持有该视频的查询锁。"""
+        video = await self.get(video_id)
+        if video.status != TaskStatusEnum.completed.value or not video.url:
+            raise HTTPException(400, detail=localized_message('只有已完成且包含视频文件的记录可以提取尾帧'))
+        metadata = video.metadata or {}
+        # last_frame_url 也可能是生成请求的输入尾帧，只有带输出来源的才可复用。
+        frame = metadata.get("last_frame_url") if metadata.get("last_frame_source") in {"provider", "ffmpeg"} else None
+        source = metadata.get("last_frame_source") if frame else "ffmpeg"
+        if not isinstance(frame, str) or not frame:
+            source = "ffmpeg"
+            scene = await Scene.get(id=video.scene_id)
+            chapter = await Chapter.get(id=scene.chapter_id)
+            novel = await Novel.get(id=chapter.novel_id)
+            try:
+                frame = await last_frame_service.extract_and_store(video.url, video.id, team_id=novel.team_id,
+                    **({"keep_local":True} if metadata.get("platform_request_key") else {}))
+            except Exception as error:
+                logger.warning("Last frame recovery failed: video_id=%s error=%s", video.id, type(error).__name__)
+                raise HTTPException(503, detail=localized_message('尾帧提取失败，原视频未更改，请稍后重试')) from error
+        async with in_transaction():
             video = await self.get(video_id)
-            if video.status != TaskStatusEnum.completed.value or not video.url:
-                raise HTTPException(400, detail=localized_message('只有已完成且包含视频文件的记录可以提取尾帧'))
-            metadata = video.metadata or {}
-            # last_frame_url 也可能是生成请求的输入尾帧，只有带输出来源的才可复用。
-            frame = metadata.get("last_frame_url") if metadata.get("last_frame_source") in {"provider", "ffmpeg"} else None
-            source = metadata.get("last_frame_source") if frame else "ffmpeg"
-            if not isinstance(frame, str) or not frame:
-                source = "ffmpeg"
-                scene = await Scene.get(id=video.scene_id)
-                chapter = await Chapter.get(id=scene.chapter_id)
-                novel = await Novel.get(id=chapter.novel_id)
+            propagation = await _inject_last_frame_reference(video, frame)
+            video.metadata = {
+                **(video.metadata or {}),
+                "last_frame_url": frame,
+                "last_frame_source": source,
+                "last_frame_injected_scene_id": propagation["scene_id"] if propagation else None,
+                "last_frame_reference": propagation["reference"] if propagation else None,
+                "last_frame_prompt_instruction": propagation["prompt_instruction"] if propagation else None,
+            }
+            video.metadata.pop("last_frame_extraction_error", None)
+            video.metadata.pop("last_frame_propagation_error", None)
+            await video.save(update_fields=["metadata", "updated_at"])
+        return video
+
+    _DOWNLOAD_RETRY_LIMIT = 20
+
+    async def _redownload_completed_video(self, video: Video) -> Video:
+        """已完成但成片文件未入库的视频重试下载。
+
+        供应商已生成成功、计费与结算在首次完成时已经收口，这里只补下载文件，
+        不重复查询结算与扣费；由对账器周期触发，失败累计计数，超过上限后放弃。
+        """
+        metadata = video.metadata or {}
+        try:
+            retry_count = int(metadata.get("download_retry_count", 0) or 0)
+        except (TypeError, ValueError):
+            retry_count = 0
+        if retry_count >= self._DOWNLOAD_RETRY_LIMIT:
+            return video
+        config_id = metadata.get("model_config_id")
+        try:
+            if config_id is not None:
+                config = await ai_model_config_controller.get_configured_for_task(
+                    AiTaskTypeEnum.video.value,
+                    int(config_id),
+                    team_id=metadata.get("team_id"),
+                )
+            else:
+                config = await ai_model_config_controller.get_active(
+                    AiTaskTypeEnum.video.value, team_id=metadata.get("team_id")
+                )
+            generator = get_generator(config)
+            result = await generator.query(video.external_task_id)
+            remote_url = result.get("url")
+            if not isinstance(remote_url, str) or not remote_url:
+                raise ValueError(localized_message('供应商未返回成片地址'))
+            keep_local = config.api_protocol == "novelvids"
+            downloaded = await _download_video(remote_url, video.id, keep_local=keep_local)
+            if isinstance(downloaded, tuple):
+                media_url, posters = downloaded
+            else:  # 兼容测试替身和旧扩展实现
+                media_url, posters = downloaded, {}
+            new_metadata = {
+                **(video.metadata or {}),
+                **posters,
+                **(result.get("metadata") or {}),
+            }
+            new_metadata.pop("error", None)
+            new_metadata.pop("download_retry_count", None)
+            video.url = media_url
+            video.metadata = new_metadata
+            await video.save(update_fields=["url", "metadata", "updated_at"])
+            logger.info("Video redownload succeeded: video_id=%s -> %s", video.id, media_url)
+            # 首次完成时尾帧提取可能随下载一起失败：按需补提（幂等；已持查询锁，走无锁路径）
+            if (
+                (video.metadata or {}).get("return_last_frame") is True
+                and (video.metadata or {}).get("last_frame_source") not in {"provider", "ffmpeg"}
+            ):
                 try:
-                    frame = await last_frame_service.extract_and_store(video.url, video.id, team_id=novel.team_id,
-                        **({"keep_local":True} if metadata.get("platform_request_key") else {}))
+                    await self._extract_last_frame_unlocked(video.id)
                 except Exception as error:
-                    logger.warning("Last frame recovery failed: video_id=%s error=%s", video.id, type(error).__name__)
-                    raise HTTPException(503, detail=localized_message('尾帧提取失败，原视频未更改，请稍后重试')) from error
-            async with in_transaction():
-                video = await self.get(video_id)
-                propagation = await _inject_last_frame_reference(video, frame)
-                video.metadata = {
-                    **(video.metadata or {}),
-                    "last_frame_url": frame,
-                    "last_frame_source": source,
-                    "last_frame_injected_scene_id": propagation["scene_id"] if propagation else None,
-                    "last_frame_reference": propagation["reference"] if propagation else None,
-                    "last_frame_prompt_instruction": propagation["prompt_instruction"] if propagation else None,
-                }
-                video.metadata.pop("last_frame_extraction_error", None)
-                video.metadata.pop("last_frame_propagation_error", None)
-                await video.save(update_fields=["metadata", "updated_at"])
+                    logger.warning(
+                        "Last frame backfill after redownload failed: video_id=%s error=%s",
+                        video.id, type(error).__name__,
+                    )
+            return video
+        except Exception as error:
+            logger.warning(
+                "Video redownload failed: video_id=%s attempt=%s error_type=%s",
+                video.id, retry_count + 1, type(error).__name__,
+            )
+            video.metadata = {
+                **(video.metadata or {}),
+                "download_retry_count": retry_count + 1,
+                "error": f"成片下载失败，正在自动重试（{retry_count + 1}/{self._DOWNLOAD_RETRY_LIMIT}）：{error}",
+            }
+            await video.save(update_fields=["metadata", "updated_at"])
             return video
 
     async def generate(self, req: VideoGenerateRequest, media_base_url: str = "", team_id=None, user_id=None):
@@ -694,6 +773,13 @@ class VideoController(CRUDBase[Video, dict, dict]):
             TaskStatusEnum.failed.value,
             TaskStatusEnum.cancelled.value,
         ):
+            # 已完成但成片文件未入库（如下载 302/网络故障）：有限次重下，确保生成成功即可显示
+            if (
+                video.status == TaskStatusEnum.completed.value
+                and not video.url
+                and video.external_task_id
+            ):
+                video = await self._redownload_completed_video(video)
             if (video.metadata or {}).get('agent_run_id'):
                 from services.creation_agent.video_settlement import settle_video
                 await settle_video(video)

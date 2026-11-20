@@ -1441,3 +1441,104 @@ async def test_blocking_map_sent_as_image_with_its_actual_number(monkeypatch, tm
     assert len(images) == 2 and images[0] == image
     assert images[1].startswith("data:image/png;base64,") and base64.b64decode(images[1].split(",")[1]).startswith(b"\x89PNG\r\n\x1a\n")
     assert tag in parts[0]["text"] and ("机位" in parts[0]["text"] or "camera" in parts[0]["text"])
+
+
+# =====================================================================
+# 已完成但成片未入库：自动重下，确保生成成功即可显示
+# =====================================================================
+
+async def _create_completed_video_without_file(scene: Scene, config: AiModelConfig, **metadata_extra) -> Video:
+    """模拟供应商已生成成功、但成片下载失败（如 302）落库后的形态。"""
+    return await Video.create(
+        scene_id=scene.id,
+        model_type=config.video_model_type,
+        external_task_id="cgt-redownload-test-1",
+        url=None,
+        status=TaskStatusEnum.completed.value,
+        metadata={
+            "model_config_id": config.id,
+            "team_id": None,
+            "novel_id": None,
+            "error": "视频下载失败: Redirect response '302 '",
+            **metadata_extra,
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_已完成无成片视频_查询状态时自动重下并清除错误():
+    scene, config = await _create_scene_with_config()
+    video = await _create_completed_video_without_file(scene, config)
+
+    with patch("controllers.video.get_generator") as mock_factory, \
+         patch("controllers.video._download_video", new_callable=AsyncMock) as mock_download:
+        mock_gen = AsyncMock()
+        mock_gen.query.return_value = {
+            "status": TaskStatusEnum.completed,
+            "url": "https://provider.example.com/video.mp4",
+            "metadata": {"duration": 6},
+        }
+        mock_factory.return_value = mock_gen
+        mock_download.return_value = ("/media/videos/%d.mp4" % video.id, {"poster_url": "/media/posters/x.webp"})
+
+        refreshed = await video_controller.query_status(video.id)
+
+    assert refreshed.url == "/media/videos/%d.mp4" % video.id
+    assert "error" not in refreshed.metadata
+    assert refreshed.metadata["poster_url"] == "/media/posters/x.webp"
+    mock_gen.query.assert_awaited_once_with("cgt-redownload-test-1")
+    mock_download.assert_awaited_once()
+
+    persisted = await Video.get(id=video.id)
+    assert persisted.url == "/media/videos/%d.mp4" % video.id
+    assert "error" not in persisted.metadata
+
+
+@pytest.mark.asyncio
+async def test_重下失败_累计计数并写入错误信息():
+    scene, config = await _create_scene_with_config()
+    video = await _create_completed_video_without_file(scene, config)
+
+    with patch("controllers.video.get_generator") as mock_factory:
+        mock_gen = AsyncMock()
+        mock_gen.query.side_effect = RuntimeError("boom")
+        mock_factory.return_value = mock_gen
+
+        refreshed = await video_controller.query_status(video.id)
+
+    assert refreshed.url is None
+    assert refreshed.metadata["download_retry_count"] == 1
+    assert "boom" in refreshed.metadata["error"]
+
+    # 再次触发，计数继续累计
+    refreshed = await video_controller.query_status(video.id)
+    assert refreshed.metadata["download_retry_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_重下超过上限_不再查询供应商():
+    scene, config = await _create_scene_with_config()
+    video = await _create_completed_video_without_file(scene, config, download_retry_count=20)
+
+    with patch("controllers.video.get_generator") as mock_factory:
+        refreshed = await video_controller.query_status(video.id)
+
+    mock_factory.assert_not_called()
+    assert refreshed.url is None
+    assert refreshed.metadata["download_retry_count"] == 20
+
+
+@pytest.mark.asyncio
+async def test_已完成且已有成片_查询状态不会重复下载():
+    scene, config = await _create_scene_with_config()
+    video = await _create_completed_video_without_file(scene, config)
+    video.url = "/media/videos/exists.mp4"
+    await video.save(update_fields=["url"])
+
+    with patch("controllers.video.get_generator") as mock_factory, \
+         patch("controllers.video._download_video", new_callable=AsyncMock) as mock_download:
+        refreshed = await video_controller.query_status(video.id)
+
+    mock_factory.assert_not_called()
+    mock_download.assert_not_called()
+    assert refreshed.url == "/media/videos/exists.mp4"

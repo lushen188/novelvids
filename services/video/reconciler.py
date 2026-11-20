@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
 from models.video import Video
+from tortoise.expressions import Q
 from utils.enums import AiTaskTypeEnum, TaskStatusEnum
 
 logger = logging.getLogger(__name__)
@@ -76,9 +77,15 @@ class VideoTaskReconciler:
 
     async def reconcile_once(self) -> int:
         await self._expire_incomplete_submissions()
+        # 除未终态任务外，也收口"已完成但成片未入库"的视频（如下载故障），
+        # 由 query_status 内部做有限次重下，确保生成成功即可显示。
         candidates = await Video.filter(
-            status__in=_ACTIVE_STATUSES,
-            external_task_id__not_isnull=True,
+            Q(status__in=_ACTIVE_STATUSES, external_task_id__not_isnull=True)
+            | Q(
+                status=TaskStatusEnum.completed.value,
+                url__isnull=True,
+                external_task_id__not_isnull=True,
+            ),
         ).order_by("updated_at", "id").limit(self._batch_size)
         for candidate in candidates:
             if not candidate.external_task_id:

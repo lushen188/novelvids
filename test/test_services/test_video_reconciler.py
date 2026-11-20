@@ -10,11 +10,17 @@ from services.video.reconciler import VideoTaskReconciler
 from utils.enums import TaskStatusEnum, VideoModelTypeEnum
 
 
-async def _video(scene: Scene, status: TaskStatusEnum, external_task_id: str | None) -> Video:
+async def _video(
+    scene: Scene,
+    status: TaskStatusEnum,
+    external_task_id: str | None,
+    url: str | None = None,
+) -> Video:
     return await Video.create(
         scene_id=scene.id,
         model_type=VideoModelTypeEnum.seedance.value,
         external_task_id=external_task_id,
+        url=url,
         status=status.value,
         metadata={},
     )
@@ -38,7 +44,10 @@ async def test_reconcile_once_queries_all_active_provider_tasks():
     pending = await _video(scene, TaskStatusEnum.pending, "pending-task")
     running = await _video(scene, TaskStatusEnum.running, "running-task")
     queued = await _video(scene, TaskStatusEnum.queued, "queued-task")
-    await _video(scene, TaskStatusEnum.completed, "completed-task")
+    # 已完成且成片已入库：不再查询
+    await _video(scene, TaskStatusEnum.completed, "completed-task", url="/media/videos/done.mp4")
+    # 已失败：不再查询
+    await _video(scene, TaskStatusEnum.failed, "failed-task")
     await _video(scene, TaskStatusEnum.pending, None)
     query_status = AsyncMock()
     reconciler = VideoTaskReconciler(query_status, interval_seconds=30)
@@ -55,6 +64,36 @@ async def test_reconcile_once_queries_all_active_provider_tasks():
         refreshed = await Video.get(id=video_id)
         assert refreshed.metadata["last_reconciled_at"]
         assert "last_reconcile_error_type" not in refreshed.metadata
+
+
+@pytest.mark.asyncio
+async def test_reconcile_once_also_reconciles_completed_videos_without_file():
+    """生成成功但成片未入库（如下载 302 失败）的视频应被对账器收口，确保生成成功即可显示。"""
+    novel = await Novel.create(name="成片补下测试")
+    chapter = await Chapter.create(
+        novel_id=novel.id,
+        number=1,
+        name="第一章",
+        content="正文",
+    )
+    scene = await Scene.create(
+        chapter_id=chapter.id,
+        sequence=1,
+        prompt="镜头",
+        duration=6,
+    )
+    missing_file = await _video(scene, TaskStatusEnum.completed, "missing-file-task", url=None)
+    with_file = await _video(
+        scene, TaskStatusEnum.completed, "with-file-task", url="/media/videos/ok.mp4"
+    )
+    query_status = AsyncMock()
+    reconciler = VideoTaskReconciler(query_status, interval_seconds=30)
+
+    count = await reconciler.reconcile_once()
+
+    assert count == 1
+    assert [call.args[0] for call in query_status.await_args_list] == [missing_file.id]
+    assert with_file.id not in [call.args[0] for call in query_status.await_args_list]
 
 
 @pytest.mark.asyncio
