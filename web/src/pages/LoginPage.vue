@@ -109,7 +109,7 @@ async function qilingAuthenticated(session: LoginResult) {
     <div class="cinematic-login__layout">
       <div class="cinematic-login__statement">
         <h1 class="cinematic-login__brand">
-          <img src="/studio-logo.webp" alt="" width="72" height="72" />
+          <img src="/logo.png" alt="" width="72" height="72" />
           <span class="cinematic-login__brand-name">
             <span class="cinematic-login__brand-title">{{ tr('捷元乐AIGC') }}</span>
             <span class="cinematic-login__wordmark" role="img" aria-label="JYL AIGC">
