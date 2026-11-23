@@ -54,11 +54,11 @@ For an existing standard SQLite Compose installation, run `sh scripts/update/ins
 Join the **NovelVids · 捷元乐AIGC WeChat group** to discuss AI animation, short dramas, model workflows and open-source deployment.
 
 <p align="center">
-  <a href="docs/images/wechat-group-qr.jpg"><img src="docs/images/wechat-group-qr.jpg" width="320" alt="NovelVids WeChat group QR code, valid before November 15, 2026"></a>
+  <a href="docs/images/wechat-group-qr.jpg"><img src="docs/images/wechat-group-qr.jpg" width="320" alt="NovelVids WeChat group QR code, valid before November 29, 2026"></a>
 </p>
 
 <p align="center">
-  Scan with WeChat · <strong>Updated November 8, 2026; valid before November 15.</strong><br>
+  Scan with WeChat · <strong>Updated November 22, 2026; valid before November 29.</strong><br>
   Group QR codes expire after 7 days. If this one has expired, check the latest version of the repository home page.
 </p>
 
@@ -102,7 +102,7 @@ Watch the tutorial to learn how to use NovelVids. For finished creations, see th
 | A revision in mind | Ask the assistant to change selected objects, inspect diffs and recorded changes, and undo supported edits |
 | Generated footage | Track tasks and versions, connect shots, assemble episodes and optionally enhance resolution |
 
-You can also use **Remake studio** to analyze reference videos you are authorized to use and turn their shots into an editable project.
+You can also use **Remake studio** to analyze reference videos you are authorized to use and turn their shots into an editable project. New jobs first identify the characters, settings and props in each episode, then cut the source to the project’s maximum shot duration. Sources that fit stay whole. Longer sources are grouped at existing edits wherever possible, splitting an uninterrupted take only if it exceeds the duration budget. Each clip is analyzed independently with the episode’s asset catalog, sharing the selected model’s concurrency limit. Results are ordered locally and matched to known assets. Elapsed time starts at upload. Batches continue processing past the five-minute target.
 
 ### Why a workspace?
 
