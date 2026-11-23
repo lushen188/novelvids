@@ -6,6 +6,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from controllers.video import video_controller
+from services.video import get_record_model_type
 from models.novel import Novel
 from models.chapter import Chapter
 from models.scene import Scene
@@ -1457,7 +1458,7 @@ async def _create_completed_video_without_file(scene: Scene, config: AiModelConf
     """模拟供应商已生成成功、但成片下载失败（如 302）落库后的形态。"""
     return await Video.create(
         scene_id=scene.id,
-        model_type=config.video_model_type,
+        model_type=get_record_model_type(config).value,
         external_task_id="cgt-redownload-test-1",
         url=None,
         status=TaskStatusEnum.completed.value,
