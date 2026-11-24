@@ -49,11 +49,14 @@ async def test_reference_upload_policy_prefers_local_for_studio_storage(client, 
         return response.json()["data"]["direct"]
 
     assert await policy(model_config_id=platform.id) is False
-    assert await policy(model_config_id=custom.id) is False
+    # 本地二开裁决：studio 角色保留阿里云 OSS 浏览器直传（上游 1.22 的 studio
+    # 直传门控被裁决拒绝），非平台协议的自有模型走直传而非本地中转。
+    assert await policy(model_config_id=custom.id) is True
     monkeypatch.setattr(settings, "STUDIO_PLATFORM_BASE_URL", "https://platform.example/v1")
     monkeypatch.setattr(settings, "STUDIO_PLATFORM_API_KEY", "nv_test")
     assert await policy(model_config_id=custom.id) is False
-    assert await policy() is False
+    # 平台已连接但无模型上下文时，本地二开仍提供直传（素材上传与模型无关）
+    assert await policy() is True
 
 
 @pytest.mark.parametrize("method,ttl,headers,expected", [

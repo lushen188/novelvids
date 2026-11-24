@@ -1,13 +1,15 @@
 """OSS 提供方与直传策略/终局端点测试。"""
 
 import base64
+import hashlib
+import hmac
 import json
 
 import pytest
 from httpx import AsyncClient
 
 from services.oss import make_upload_key
-from services.oss.aliyun import AliyunProvider, _hmac_sign
+from services.oss.aliyun import AliyunProvider
 
 
 # ---------------------------------------------------------------- 签名与 key
@@ -29,19 +31,31 @@ def test_aliyun_form_policy_contains_expected_fields():
     )
     assert policy["url"] == "https://my-bucket.oss-cn-beijing.aliyuncs.com"
     fields = policy["fields"]
-    assert fields["OSSAccessKeyId"] == "ak"
+    # 本地二开 V4 表单签名字段（OSS4-HMAC-SHA256，非上游 V1 的 OSSAccessKeyId/signature）
     assert fields["key"] == "uploads/0/20260818/abc-书稿.txt"
-    # policy 可解出并满足 bucket/key 条件
+    assert fields["x-oss-signature-version"] == "OSS4-HMAC-SHA256"
+    assert fields["x-oss-credential"].startswith("ak/")
+    assert fields["x-oss-credential"].endswith("/aliyun_v4_request")
+    assert fields["x-oss-date"].endswith("Z")
+    assert fields["Content-Type"] == "text/plain"
+    # policy 可解出并满足 bucket/key/大小条件
     decoded = json.loads(base64.b64decode(fields["policy"]).decode("utf-8"))
     assert {"bucket": "my-bucket"} in decoded["conditions"]
     assert {"key": fields["key"]} in decoded["conditions"]
     assert {"Content-Type": "text/plain"} in decoded["conditions"]
-    # 签名与 policy 匹配
-    expected = _hmac_sign("sk", fields["policy"])
-    assert fields["signature"] == expected
+    assert {"x-oss-signature-version": "OSS4-HMAC-SHA256"} in decoded["conditions"]
+    assert ["content-length-range", 1, 20 * 1024 * 1024] in decoded["conditions"]
+    # V4 签名与 policy 匹配：HMAC-SHA256(policy_b64, 签名密钥链)
+    date_stamp = fields["x-oss-date"][:8]
+    expected = hmac.new(
+        provider._signing_key(date_stamp),
+        fields["policy"].encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+    assert fields["x-oss-signature"] == expected
 
 
-def test_aliyun_authorization_is_v1_format():
+def test_aliyun_headers_are_v4_format():
     provider = AliyunProvider(
         bucket="b",
         endpoint="e",
@@ -50,8 +64,13 @@ def test_aliyun_authorization_is_v1_format():
         access_key_id="ak",
         access_key_secret="sk",
     )
-    date, authorization = provider._authorization("PUT", "k.txt", "text/plain")
-    assert authorization.startswith("OSS ak:")
+    # 本地二开 V4 请求头（_authorization/_hmac_sign 为上游 V1 实现，已随 V4 改写移除）
+    headers = provider._v4_headers("PUT", "k.txt", "text/plain")
+    assert headers["x-oss-date"].endswith("Z")
+    assert headers["x-oss-content-sha256"] == "UNSIGNED-PAYLOAD"
+    assert headers["Content-Type"] == "text/plain"
+    assert headers["Authorization"].startswith("OSS4-HMAC-SHA256 Credential=ak/")
+    assert "Signature=" in headers["Authorization"]
     assert provider._internal_url("k.txt") == "https://b.i/k.txt"
 
 
@@ -236,6 +255,11 @@ async def test_upload_policy_direct_with_fake_provider(client, monkeypatch, edit
     class FakeProvider(oss_base.OSSProvider):
         name = "fake"
         enabled = True
+
+        # 本地二开门控要求直传能力显式声明（R2 等不支持 POST 表单的 provider 为 False）
+        @property
+        def supports_direct_upload(self) -> bool:
+            return True
 
         def sign_form_upload(self, key, content_type, max_size):
             return {"url": "https://fake-oss/upload", "fields": {"key": key, "token": "t"}}

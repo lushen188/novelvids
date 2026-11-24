@@ -261,7 +261,9 @@ async def test_refresh_public_h3_channel_uses_advertised_resolution_prices(monke
     assert row.pricing == {**tariff, 'discount': .8}
     capabilities = capabilities_for_config(row)
     assert capabilities.resolutions == ('480p', '768p') and capabilities.default_resolution == '768p'
-    assert (await ai_model_config_controller.list_active_video_models())[0]['capabilities'] == capabilities.public_dict()
+    # 本地二开：平台同步的 novelvids 协议行不进入用户侧活跃模型列表
+    # （PROTOCOL_CAPABILITIES 的 novelvids 表项已随平台连接移除而删除）
+    assert await ai_model_config_controller.list_active_video_models() == []
     ai_model_config_controller._validate_pricing({'pricing': row.pricing}, row)
     options = dict(generation_mode='reference', duration=6, aspect_ratio='16:9', generate_audio=None, output_format=None)
     for tier in ('480p', '768p'):
@@ -310,7 +312,10 @@ async def test_video_tariff_follows_channel_on_create_and_refresh(monkeypatch, w
     await row.refresh_from_db()
     assert row.pricing == {**entry['pricing'], 'billing_unit': local_unit, 'discount': .8}
     assert capabilities_for_config(row).resolutions == tuple(prices)
-    await ai_model_config_controller.patch(row.id, AiModelConfigPatch(pricing=row.pricing))
+    # 本地二开改编：novelvids 协议行不可经控制器 patch（validate_video_protocol
+    # 会拒绝平台协议），改为直接调用计费校验，等价覆盖 billing_unit 白名单语义
+    from controllers.config import _validate_video_pricing
+    _validate_video_pricing(row.pricing, row.video_model_type, row)
     assert compute_video_cost(10, '720p', row.pricing) == Decimal(str(cost)) * Decimal('.8')
     entry['pricing']['billing_unit'] = 'unknown-future-unit'
     result = await studio_platform.sync_platform_models()
