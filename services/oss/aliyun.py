@@ -1,23 +1,57 @@
-"""阿里云 OSS 提供方：零新增依赖，标准库实现 OSS V1 签名。
+"""阿里云 OSS 提供方：零新增依赖，标准库实现 OSS 签名版本 4（Signature Version 4）。
 
-- 前端直传：POST 表单策略（policy base64 + HMAC-SHA1 签名）
-- 服务端读写：Authorization 头签名（V1），默认走内网 endpoint 省流量
-- 公网访问：Bucket 为公共读，直接拼接公共 URL，不做查询串签名
+- 前端直传：POST 表单策略（V4：policy base64 + HMAC-SHA256 签名密钥链）
+- 服务端读写：OSS4-HMAC-SHA256 头签名，默认走内网 endpoint 读写省流量；
+- 公网访问：Bucket 为公共读，直接拼接公共 URL，不做查询串签名。
+
+V4 升级说明（本地二开，2026-11-24）：上游原版为 V1 头签名（``OSS AK:signature``）
+与 SHA1 表单策略签名。阿里云新建 Bucket 自 2024/2025 起默认禁止 V1 签名
+（403 ``V1 signature is forbidden``，且该限制不可解除），因此本地将该提供方
+升级为 V4 签名，要点：
+
+- 签名密钥链前缀为 ``aliyun_v4`` + AccessKeySecret（区别于 AWS 的 ``AWS4``）；
+- scope 终止符为 ``aliyun_v4_request``，服务为 ``oss``；
+- canonical headers 仅签 ``x-oss-*`` 与 ``content-type`` / ``content-md5``
+  （host 不参与签名）；
+- payload 固定为 ``UNSIGNED-PAYLOAD``；
+- region 从 endpoint 自动推导（``oss-<region>.aliyuncs.com``），无新增环境变量。
 """
 
-import base64
 import asyncio
+import base64
 import hashlib
 import hmac
+import json
+import re
 from contextlib import asynccontextmanager
-from email.utils import formatdate
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 import httpx
 
 from services.oss.base import OSSProvider
 
 _MAX_DIRECT_UPLOAD = 5 * 1024 * 1024 * 1024  # 直传策略默认上限 5GB
+_REGION_FALLBACK = "cn-hangzhou"
+
+
+def _hmac_sha256(key: bytes, message: str) -> bytes:
+    return hmac.new(key, message.encode("utf-8"), hashlib.sha256).digest()
+
+
+def _iso_expiration() -> str:
+    return (
+        datetime.now(timezone.utc) + timedelta(minutes=15)
+    ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def _split_query(path_and_query: str) -> tuple[str, str]:
+    """把 "path?query" 拆成 (path, query)；无 query 时返回 ("",)。"""
+    if "?" not in path_and_query:
+        return path_and_query, ""
+    path, query = path_and_query.split("?", 1)
+    return path, query
 
 
 class AliyunProvider(OSSProvider):
@@ -39,6 +73,18 @@ class AliyunProvider(OSSProvider):
         self.public_base = (public_base or "").rstrip("/")
         self.access_key_id = access_key_id
         self.access_key_secret = access_key_secret
+        self.region = self._derive_region(self.endpoint or self.internal_endpoint)
+
+    @staticmethod
+    def _derive_region(endpoint: str) -> str:
+        """从 endpoint 推导 region：oss-cn-guangzhou[.internal].aliyuncs.com → cn-guangzhou。"""
+        host = re.sub(r"^https?://", "", endpoint or "").split("/")[0]
+        first = host.split(".")[0]
+        if first.startswith("oss-"):
+            first = first[len("oss-"):]
+        if first.endswith("-internal"):
+            first = first[: -len("-internal")]
+        return first or _REGION_FALLBACK
 
     @property
     def enabled(self) -> bool:
@@ -48,6 +94,11 @@ class AliyunProvider(OSSProvider):
             and self.access_key_id
             and self.access_key_secret
         )
+
+    @property
+    def supports_direct_upload(self) -> bool:
+        """阿里云 OSS 支持 POST 表单策略浏览器直传（本类为 V4 签名实现）。"""
+        return True
 
     # ---- 公网访问地址（Bucket 为公共读，不签名） ----
 
@@ -96,7 +147,52 @@ class AliyunProvider(OSSProvider):
                 result.append(item)
         return result
 
-    # ---- 前端直传：POST 表单策略 ----
+    # ---- V4 签名（服务端读写） ----
+
+    def _signing_key(self, date_stamp: str) -> bytes:
+        """V4 签名密钥链：aliyun_v4+SK → date → region → oss → aliyun_v4_request。"""
+        key = f"aliyun_v4{self.access_key_secret}".encode("utf-8")
+        key = _hmac_sha256(key, date_stamp)
+        key = _hmac_sha256(key, self.region)
+        key = _hmac_sha256(key, "oss")
+        return _hmac_sha256(key, "aliyun_v4_request")
+
+    def _v4_headers(self, method: str, key: str, content_type: str = "") -> dict[str, str]:
+        """构造 V4 签名请求头（canonical headers 只签 x-oss-* 与 content-type）。"""
+        now = datetime.now(timezone.utc)
+        amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+        date_stamp = amz_date[:8]
+        headers: dict[str, str] = {
+            "x-oss-date": amz_date,
+            "x-oss-content-sha256": "UNSIGNED-PAYLOAD",
+        }
+        if content_type:
+            headers["Content-Type"] = content_type
+        signed = {name.lower(): str(value) for name, value in headers.items()}
+        canonical_headers = "".join(f"{name}:{signed[name]}\n" for name in sorted(signed))
+        signed_names = ";".join(sorted(signed))
+        canonical_uri = f"/{self.bucket}/{quote(key, safe='/~')}"
+        # 各段以 \n 分隔：method / uri / query(空) / headers / additional(空) / payload
+        canonical_request = (
+            f"{method}\n{canonical_uri}\n\n{canonical_headers}\n\nUNSIGNED-PAYLOAD"
+        )
+        scope = f"{date_stamp}/{self.region}/oss/aliyun_v4_request"
+        string_to_sign = (
+            f"OSS4-HMAC-SHA256\n{amz_date}\n{scope}\n"
+            f"{hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()}"
+        )
+        signature = hmac.new(
+            self._signing_key(date_stamp),
+            string_to_sign.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        headers["Authorization"] = (
+            f"OSS4-HMAC-SHA256 Credential={self.access_key_id}/{scope}, "
+            f"Signature={signature}"
+        )
+        return headers
+
+    # ---- 前端直传：POST 表单策略（V4） ----
 
     def sign_form_upload(
         self,
@@ -104,61 +200,65 @@ class AliyunProvider(OSSProvider):
         content_type: str = "application/octet-stream",
         max_size: int = _MAX_DIRECT_UPLOAD,
     ) -> dict:
+        now = datetime.now(timezone.utc)
+        amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+        date_stamp = amz_date[:8]
+        scope = f"{date_stamp}/{self.region}/oss/aliyun_v4_request"
+        credential = f"{self.access_key_id}/{scope}"
         policy = {
             "expiration": _iso_expiration(),
             "conditions": [
                 {"bucket": self.bucket},
                 {"key": key},
                 {"Content-Type": content_type},
+                {"x-oss-signature-version": "OSS4-HMAC-SHA256"},
+                {"x-oss-credential": credential},
+                {"x-oss-date": amz_date},
                 ["content-length-range", 1, max_size],
             ],
         }
         policy_b64 = base64.b64encode(
-            _json_bytes(policy)
+            json.dumps(policy, separators=(",", ":")).encode("utf-8")
         ).decode("ascii")
-        signature = _hmac_sign(self.access_key_secret, policy_b64)
+        signature = hmac.new(
+            self._signing_key(date_stamp),
+            policy_b64.encode("ascii"),
+            hashlib.sha256,
+        ).hexdigest()
         return {
             # 直传必须使用 Bucket 虚拟主机域名（路径式已不再支持，POST 到
             # https://{bucket}.{endpoint}），CNAME 域名不支持 POST 表单上传。
             "url": f"https://{self.bucket}.{self.endpoint}",
             "fields": {
-                "OSSAccessKeyId": self.access_key_id,
-                "policy": policy_b64,
-                "signature": signature,
                 "key": key,
+                "policy": policy_b64,
+                "x-oss-signature-version": "OSS4-HMAC-SHA256",
+                "x-oss-credential": credential,
+                "x-oss-date": amz_date,
+                "x-oss-signature": signature,
                 "Content-Type": content_type,
             },
         }
 
-    # ---- 服务端读写（内网） ----
-
-    def _authorization(self, method: str, key: str, content_type: str = "") -> str:
-        date = formatdate(usegmt=True)
-        string_to_sign = (
-            f"{method}\n\n{content_type}\n{date}\n/{self.bucket}/{key}"
-        )
-        signature = _hmac_sign(self.access_key_secret, string_to_sign)
-        return date, f"OSS {self.access_key_id}:{signature}"
+    # ---- 服务端读写（内网 endpoint，V4 签名） ----
 
     def _internal_url(self, key: str) -> str:
-        # 内网 endpoint 同样使用 Bucket 虚拟主机域名：
         # https://{bucket}.{internal_endpoint}/{key}
-        return f"https://{self.bucket}.{self.internal_endpoint}/{key}"
+        return f"https://{self.bucket}.{self.internal_endpoint}/{quote(key, safe='/~')}"
 
     async def get_bytes(self, key: str) -> bytes:
-        date, authorization = self._authorization("GET", key)
+        headers = self._v4_headers("GET", key)
         async with httpx.AsyncClient(timeout=120) as client:
             response = await client.get(
-                self._internal_url(key),
-                headers={"Date": date, "Authorization": authorization},
+                self._internal_url(key), headers=headers
             )
             response.raise_for_status()
             return response.content
 
     @asynccontextmanager
     async def open_download(self, key: str, *, byte_range: str | None = None):
-        date, authorization = self._authorization("GET", key)
-        headers = {"Date": date, "Authorization": authorization, "Accept-Encoding": "identity"}
+        headers = self._v4_headers("GET", key)
+        headers["Accept-Encoding"] = "identity"
         if byte_range:
             headers["Range"] = byte_range
         async with httpx.AsyncClient(timeout=120) as client:
@@ -181,12 +281,7 @@ class AliyunProvider(OSSProvider):
         *,
         cache_control: str | None = None,
     ) -> None:
-        date, authorization = self._authorization("PUT", key, content_type)
-        headers = {
-            "Date": date,
-            "Authorization": authorization,
-            "Content-Type": content_type,
-        }
+        headers = self._v4_headers("PUT", key, content_type)
         if cache_control:
             headers["Cache-Control"] = cache_control
         async with httpx.AsyncClient(timeout=300) as client:
@@ -204,7 +299,8 @@ class AliyunProvider(OSSProvider):
         content_type: str,
     ) -> None:
         """使用 OSS 内网 endpoint 流式上传文件。"""
-        date, authorization = self._authorization("PUT", key, content_type)
+        headers = self._v4_headers("PUT", key, content_type)
+        headers["Content-Length"] = str(source.stat().st_size)
 
         async def chunks():
             with source.open("rb") as stream:
@@ -215,50 +311,15 @@ class AliyunProvider(OSSProvider):
             response = await client.put(
                 self._internal_url(key),
                 content=chunks(),
-                headers={
-                    "Date": date,
-                    "Authorization": authorization,
-                    "Content-Type": content_type,
-                    "Content-Length": str(source.stat().st_size),
-                },
+                headers=headers,
             )
             response.raise_for_status()
 
     async def delete(self, key: str) -> None:
         """删除未绑定项目的暂存对象。"""
-        date, authorization = self._authorization("DELETE", key)
+        headers = self._v4_headers("DELETE", key)
         async with httpx.AsyncClient(timeout=120) as client:
             response = await client.delete(
-                self._internal_url(key),
-                headers={"Date": date, "Authorization": authorization},
+                self._internal_url(key), headers=headers
             )
             response.raise_for_status()
-
-
-def _iso_expiration() -> str:
-    from datetime import datetime, timedelta, timezone
-
-    return (
-        datetime.now(timezone.utc) + timedelta(minutes=15)
-    ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-
-def _json_bytes(payload: dict) -> bytes:
-    import json
-
-    return json.dumps(payload, separators=(",", ":")).encode("utf-8")
-
-
-def _split_query(path_and_query: str) -> tuple[str, str]:
-    """把 "path?query" 拆成 (path, query)；无 query 时返回 ("",)。"""
-    if "?" not in path_and_query:
-        return path_and_query, ""
-    path, query = path_and_query.split("?", 1)
-    return path, query
-
-
-def _hmac_sign(secret: str, message: str) -> str:
-    digest = hmac.new(
-        secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha1
-    ).digest()
-    return base64.b64encode(digest).decode("ascii")
