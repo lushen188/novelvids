@@ -1,4 +1,5 @@
 import { tr } from '@/i18n'
+import { randomUUID } from '@/shared/cryptoCompat'
 
 const SUFFIX: Record<string,string> = {
   'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif','image/svg+xml':'svg','image/bmp':'bmp',
@@ -27,7 +28,7 @@ export class BrowserMedia {
       if (!source.startsWith('blob:') && !source.startsWith('data:')) return source
       let marker=this.sources.get(source)
       if (!marker) {
-        marker='novelvids-browser:'+crypto.randomUUID()
+        marker='novelvids-browser:'+randomUUID()
         this.sources.set(source,marker)
       }
       return marker

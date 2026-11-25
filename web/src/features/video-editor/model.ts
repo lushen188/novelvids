@@ -1,4 +1,5 @@
 import { tr } from '@/i18n'
+import { randomUUID } from '@/shared/cryptoCompat'
 import type { AudioClip, ClipKind, ClipPatch, EditClip, EditDocument, EditorMedia, EditSource, SubtitleClip, VideoClip } from './types'
 
 export const sourceKey = (source: EditSource) => `${source.kind}:${source.id}`
@@ -78,7 +79,7 @@ export function changeClip(value: EditDocument, id: string, patch: ClipPatch, me
 
 export function addMedia(value: EditDocument, media: EditorMedia, at: number, selectedId: string): [EditDocument, string] {
   if (media.missing || !media.url) throw new Error(tr('素材尚未就绪'))
-  const next = compactVideoTrack(cloneDocument(value)), id = crypto.randomUUID()
+  const next = compactVideoTrack(cloneDocument(value)), id = randomUUID()
   let start = frameTime(at, next.fps)
   const sourceDuration = frameTime(media.kind === 'sticker' ? 4 : media.duration || 4, next.fps)
   const remaining = Math.max(0, totalDuration(value) - start)
@@ -96,7 +97,7 @@ export function addMedia(value: EditDocument, media: EditorMedia, at: number, se
 }
 
 export function addSubtitle(value: EditDocument, at: number, text = tr('在此输入字幕')): [EditDocument, string] {
-  const next = cloneDocument(value), id = crypto.randomUUID()
+  const next = cloneDocument(value), id = randomUUID()
   next.clips.push({ id, type: 'subtitle', name: '', start: frameTime(at, next.fps), duration: Math.min(3, Math.max(1 / next.fps, totalDuration(value) - at || 3)), text, font: 'sans', font_size: 42, color: '#ffffff', bottom: 10 })
   return [validateDocument(next), id]
 }
@@ -106,7 +107,7 @@ export function splitClip(value: EditDocument, id: string, time: number): [EditD
   if (!clip || clip.type === 'video' && clip.source.kind === 'missing') throw new Error(tr('请选择可编辑的片段'))
   const offset = frameTime(time - clip.start, next.fps)
   if (offset < 1 / next.fps || clip.duration - offset < 1 / next.fps) throw new Error(tr('请将播放头放在片段内部'))
-  const other = { ...clip, id: crypto.randomUUID(), start: clip.start + offset, duration: clip.duration - offset }
+  const other = { ...clip, id: randomUUID(), start: clip.start + offset, duration: clip.duration - offset }
   if (clip.type === 'video' && other.type === 'video') {
     other.trim_in += offset * videoPlaybackRate(clip)
     if (clip.trim_out != null) clip.trim_out = other.trim_in
@@ -127,7 +128,7 @@ export function duplicateClip(value: EditDocument, id: string): [EditDocument, s
 export function pasteClip(value: EditDocument, original: EditClip, at: number): [EditDocument, string] {
   if (original.type === 'video' && original.source.kind === 'missing') throw new Error(tr('请选择可编辑的片段'))
   const next = cloneDocument(value)
-  const clip = { ...JSON.parse(JSON.stringify(original)) as EditClip, id: crypto.randomUUID(), start: Math.max(0, at) }
+  const clip = { ...JSON.parse(JSON.stringify(original)) as EditClip, id: randomUUID(), start: Math.max(0, at) }
   next.clips.push(clip)
   if (clip.type !== 'video') return [validateDocument(next), clip.id]
   const videos = orderedVideos(value)
@@ -222,7 +223,7 @@ export function parseSrt(text: string, document: EditDocument): SubtitleClip[] {
     if (!Number.isFinite(start) || end <= start || !/^\d+:([0-5]\d):([0-5]\d)/.test(match[1]!) || !/^\d+:([0-5]\d):([0-5]\d)/.test(match[2]!)) throw new Error(tr('SRT 字幕时间无效'))
     const text = lines.slice(index + 1).join('\n')
     if (text.length > 2000) throw new Error(tr('单条字幕内容过长'))
-    result.push({ id: crypto.randomUUID(), type: 'subtitle', name: '', start: frameTime(start, document.fps), duration: Math.max(1 / document.fps, frameTime(end - start, document.fps)), text, font: 'sans', font_size: 42, color: '#ffffff', bottom: 10 })
+    result.push({ id: randomUUID(), type: 'subtitle', name: '', start: frameTime(start, document.fps), duration: Math.max(1 / document.fps, frameTime(end - start, document.fps)), text, font: 'sans', font_size: 42, color: '#ffffff', bottom: 10 })
   }
   if (!result.length) throw new Error(tr('SRT 字幕格式无效'))
   return result

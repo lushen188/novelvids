@@ -273,7 +273,14 @@ class ProjectAnalysisTaskHandler(BaseTaskHandler):
             if execution:
                 from schemas.agent_workflow import CompletePrompt
                 cover = await execution.generate('image', {'purpose': 'project_cover', 'name': novel.name,
-                    'outline': outline, 'aspect_ratio': cover_ratio}, CompletePrompt)
+                    'outline': outline, 'aspect_ratio': cover_ratio}, CompletePrompt,
+                    additional_instructions=(
+                        "\n本次任务是项目封面（purpose=project_cover）：输出单幅完整电影主视觉构图，突出主要冲突与氛围，"
+                        "严格按任务输入 aspect_ratio 的画幅，不裁切或拉伸。"
+                        "封面永远不使用五格角色设定卡、角色三视图、多格拼版、脸部特写格或纯色浅灰设定背景；"
+                        "即使画面主体是角色，也按单人电影海报的单幅完整构图呈现，背景必须是有纵深的剧情场景。"
+                        "无标题、无文字、无 Logo、无水印、无边框。"
+                    ))
                 cover_prompt = cover.prompt
             else:
                 cover_prompt = render_cover_prompt(name=novel.name, book_types=book_types,

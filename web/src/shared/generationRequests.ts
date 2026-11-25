@@ -1,9 +1,11 @@
 /** Persist only unresolved request IDs, never credentials or prompt bodies. */
+import { digestSha256, randomUUID } from './cryptoCompat'
+
 const STORAGE_KEY = 'novelvids_pending_generation_requests_v1'
 
 async function fingerprint(value: string): Promise<string> {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
+  const bytes = await digestSha256(new TextEncoder().encode(value))
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function load(): Record<string, string> {
@@ -18,7 +20,7 @@ function load(): Record<string, string> {
 export async function generationRequest(identity: string, url: string, body: BodyInit | null | undefined) {
   const key = await fingerprint(JSON.stringify([identity, url, body ?? '']))
   const requests = load()
-  const id = requests[key] ?? crypto.randomUUID()
+  const id = requests[key] ?? randomUUID()
   requests[key] = id
   localStorage.setItem(STORAGE_KEY, JSON.stringify(requests))
   return { key, id }

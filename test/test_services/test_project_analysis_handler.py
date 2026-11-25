@@ -277,11 +277,12 @@ async def test_agent_cover_prompt_and_image_call_share_project_ratio(aspect_rati
     await Chapter.create(novel=novel, number=1, name='开始', content='雨后的街角。')
     image_config = await AiModelConfig.create(name='image', task_type=2, model='test-image', base_url='https://example.test',
         api_key='test', api_protocol='volcengine_ark', image_model_type='seedream_5_lite', is_active=True)
-    async def generate(skill, facts, output):
+    async def generate(skill, facts, output, **options):
         if skill == 'story':
             return BookAnalysis(book_types=[], story_outline='雨后的街角。', key_characters=[])
         assert facts['aspect_ratio'] == aspect_ratio
         assert output is CompletePrompt
+        assert 'project_cover' in options.get('additional_instructions', '')
         return CompletePrompt(prompt=f'完整电影画面，{aspect_ratio}')
     execution = SimpleNamespace(params={'task_id': 'test'}, generate=AsyncMock(side_effect=generate), before_request=AsyncMock())
     async def execute_step(task_id, key, action, **kwargs):

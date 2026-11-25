@@ -60,7 +60,6 @@ def test_enum_aliases_do_not_change_stored_protocol_values():
 @pytest.mark.parametrize("language", ["zh", "en"])
 def test_all_rule_renderers_use_the_same_skill_and_explicit_language(language):
     artifacts = [
-        (render_cover_prompt(name="Signal", book_types=[], story_outline="Text", prompt_language=language), "image"),
         (render_creation_instructions(language=language), "editing"),
         (render_summary_instructions(language), "summary"),
         (render_remake_prompt("shots", language), "remake"),
@@ -68,6 +67,10 @@ def test_all_rule_renderers_use_the_same_skill_and_explicit_language(language):
     for rendered, skill in artifacts:
         assert read_skill(skill) in rendered
         assert "language=" + language in rendered
+    # 封面 prompt 是专用精简文本，不携带完整 image skill。
+    cover = render_cover_prompt(name="Signal", book_types=[], story_outline="Text", prompt_language=language)
+    assert read_skill("image") not in cover
+    assert "Signal" in cover and "Text" in cover
     from prompts.text_tasks import render_text_task, builtin_method
     for task in ('story', 'screenplay', 'assets', 'storyboard'):
         method = builtin_method(task)

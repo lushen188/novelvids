@@ -187,7 +187,9 @@ def test_project_cover_prompt_supports_both_languages():
     from prompts.skill_pack import read_skill
     for language in ("zh", "en"):
         value = render_cover_prompt(name="山海归途", book_types=["奇幻"], story_outline="旅人寻找归途。", prompt_language=language)
-        assert read_skill("image") in value and "language=" + language in value
+        # 封面直接渲染给生图模型，不得携带完整 image skill（含五格设定卡/三视图版式）。
+        assert read_skill("image") not in value
+        assert "project_cover" in value and "aspect_ratio" in value
         assert "山海归途" in value and "旅人寻找归途。" in value
 
 

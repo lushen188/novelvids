@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowUpRight, Clapperboard, Film, FolderOpen, Image, Layers, Paperclip, Sparkles } from 'lucide-vue-next'
 import { api } from '@/api'
+import { randomUUID } from '@/shared/cryptoCompat'
 import ShowcaseGallery from '@/features/showcase/ShowcaseGallery.vue'
 import ClipReferencePrompt from '@/features/creation-agent/ClipReferencePrompt.vue'
 import { useClipQuote } from '@/features/creation-agent/useClipQuote'
@@ -209,7 +210,7 @@ async function create() {
   entering.value = true; error.value = ''
   const body = { task_type: taskType.value, mode: mode.value, model_config_id: Number(modelId.value), prompt: prompt.value.trim(), aspect_ratio: ratio.value, resolution: resolution.value, duration: Number(duration.value), output_format: outputFormat.value, ...gifParameters.value, reference_media: references.value, reference_binding: 'mentions' as const }
   const serialized = JSON.stringify(body)
-  if (pending?.body !== serialized) pending = { body: serialized, id: crypto.randomUUID() }
+  if (pending?.body !== serialized) pending = { body: serialized, id: randomUUID() }
   try {
     const session = await clipApi.create({ ...body, request_id: pending.id })
     if (current !== epoch) return

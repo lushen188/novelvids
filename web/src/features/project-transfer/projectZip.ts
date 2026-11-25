@@ -1,4 +1,6 @@
 // Stored ZIP64 records keep original video bytes intact and support projects over 4 GiB.
+import { digestSha256 } from '@/shared/cryptoCompat'
+
 const encoder = new TextEncoder()
 const blockSize = 8 * 1024 * 1024
 const crcTable = Uint32Array.from({ length: 256 }, (_, n) => {
@@ -23,9 +25,9 @@ async function checksums(file: Blob, signal: AbortSignal) {
     signal.throwIfAborted()
     const bytes = new Uint8Array(await file.slice(offset, offset + blockSize).arrayBuffer())
     for (const b of bytes) crc = crcTable[(crc ^ b) & 255]! ^ (crc >>> 8)
-    blocks.set(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), i)
+    blocks.set(await digestSha256(bytes), i)
   }
-  const root = new Uint8Array(await crypto.subtle.digest('SHA-256', blocks))
+  const root = await digestSha256(blocks)
   return { crc: (crc ^ 0xffffffff) >>> 0, sha256: Array.from(root, b => b.toString(16).padStart(2, '0')).join('') }
 }
 

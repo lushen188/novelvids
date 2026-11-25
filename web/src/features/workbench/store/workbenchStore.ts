@@ -1,4 +1,5 @@
 import { nodeMarkerColor } from '../graph/nodeAppearance'
+import { randomUUID } from '@/shared/cryptoCompat'
 
 import { sheetReference, includeSheet } from '@/shared/storyboardSheetReference'
 import { tr } from '@/i18n'
@@ -824,7 +825,7 @@ export const useWorkbenchStore = defineStore('novel-workbench', {
     },
     addVideoEnhancement(position: Point) {
       this.checkpoint()
-      const key = `video-enhancement-${crypto.randomUUID()}`
+      const key = `video-enhancement-${randomUUID()}`
       const item = node(-Date.now(), key, 'video_enhancement', tr('高清视频'), position, {
         resolution: '1080p', layout_family: 'result', ui: {},
       })
