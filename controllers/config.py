@@ -346,6 +346,10 @@ class AiModelConfigController(CRUDBase[AiModelConfig, AiModelConfigCreate, AiMod
         for config in configs:
             if not config.video_model_type:
                 continue
+            # 本地二开：开放平台连接入口已移除，平台同步行不进入用户侧活跃视频模型列表
+            # （1.22.0 时代由 novelvids 协议校验拒绝实现；1.23.0 上游为平台行绕过校验，改为显式过滤）
+            if getattr(config, "scope", None) == "studio_platform":
+                continue
             try:
                 self._validate_video_payload({}, config)
                 capabilities = configured_video_capabilities(config)

@@ -5,9 +5,8 @@ import pytest
 from fastapi import HTTPException
 
 from config import settings
-from controllers.config import ai_model_config_controller
 from models.config import AiModelConfig, StudioPlatformConnection
-from schemas.config import AiModelConfigOut, VideoGenerationModelOut
+from schemas.config import AiModelConfigOut
 from services import studio_platform
 from services.video import get_generator, get_record_model_type
 from services.video.capabilities import capabilities_for, capabilities_for_config
@@ -33,9 +32,9 @@ async def test_unknown_video_type_syncs_generates_and_refreshes(monkeypatch):
     assert (await studio_platform.sync_platform_models())["synced"] == 1
     cfg = await AiModelConfig.get(model="nv-812")
     assert AiModelConfigOut.model_validate(cfg).video_model_type == "unknown_future_video"
-    listed = await ai_model_config_controller.list_active_video_models()
-    current = VideoGenerationModelOut.model_validate(next(row for row in listed if row["config_id"] == cfg.id))
-    assert current.capabilities.duration_choices == [5, 8, 10]
+    # 本地二开：平台同步行不进入用户侧活跃列表（list_active_video_models 显式过滤
+    # studio_platform 行），能力正确性改经 capabilities_for_config 直接验证
+    assert capabilities_for_config(cfg).duration_choices == (5, 8, 10)
     assert get_record_model_type(cfg) == VideoModelTypeEnum.platform_video
     gen = get_generator(cfg)
     assert isinstance(gen, UnifiedVideoGenerator)
