@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, useId, watc
 import { BookOpen, RefreshCw, X } from 'lucide-vue-next'
 import { api } from '@/api'
 import { tr } from '@/i18n'
+import { anySignal } from '@/shared/abortCompat'
 import { notice } from '@/shared/notice'
 import type { AiTask } from '@/types'
 import AppButton from '@/components/AppButton.vue'
@@ -46,7 +47,7 @@ const TASK_READ_TIMEOUT = 10_000
 const TASK_READ_RETRY = 4_000
 
 function taskReadSignal() {
-  return AbortSignal.any([requests.signal, AbortSignal.timeout(TASK_READ_TIMEOUT)])
+  return anySignal([requests.signal, AbortSignal.timeout(TASK_READ_TIMEOUT)])
 }
 const chapterId = computed(() => scope.value === 'baseline' ? null : Number(scope.value))
 const rows = computed(() => status.value ? [status.value.baseline, ...status.value.chapters] : [])
