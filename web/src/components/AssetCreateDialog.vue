@@ -62,6 +62,7 @@ type AssetEditorFormSnapshot = {
   age_group: string
   voice: string
   voice_reference_id: number | null
+  voice_description: string
   reference_layout: string
   generation_reference_images: string[]
   model_config_id: number | null
@@ -119,6 +120,7 @@ const gender = ref('')
 const age = ref('')
 const voice = ref('')
 const voiceReferenceId = ref<number | null>(null)
+const voiceDescription = ref('')
 const voicePickerOpen = ref(false)
 const imageParameters = ref<ImageGenerationParameters>({ clarity: '1.5K', aspectRatio: '16:9', outputFormat: 'png', generationCount: 1 })
 const referenceLayout = ref('character_turnaround')
@@ -352,6 +354,7 @@ function reset() {
   age.value = ''
   voice.value = ''
   voiceReferenceId.value = null
+  voiceDescription.value = ''
   voicePickerOpen.value = false
   imageParameters.value = { clarity: '1.5K', aspectRatio: '16:9', outputFormat: 'png', generationCount: 1 }
   referenceLayout.value = 'character_turnaround'
@@ -407,6 +410,7 @@ function reset() {
     age.value = characterMetadata.ageGroup
     voice.value = typeof metadata.voice === 'string' ? metadata.voice : ''
     voiceReferenceId.value = Number(metadata.voice_reference_id) > 0 ? Number(metadata.voice_reference_id) : null
+    voiceDescription.value = typeof metadata.voice_description === 'string' ? metadata.voice_description : ''
     referenceLayout.value = metadata.reference_layout === 'group_portrait'
       ? 'group_portrait'
       : 'character_turnaround'
@@ -453,6 +457,7 @@ function captureFormSnapshot(): AssetEditorFormSnapshot {
     age_group: age.value,
     voice: voice.value,
     voice_reference_id: voiceReferenceId.value,
+    voice_description: voiceDescription.value,
     reference_layout: referenceLayout.value,
     generation_reference_images: [...referenceImages.value],
     model_config_id: Number(modelId.value) || null,
@@ -488,6 +493,7 @@ function snapshotForVariant(variant: AssetVariant, fallback: AssetEditorFormSnap
     age_group: stringField(stored, 'age_group', stringField(metadata, 'age_group', fallback.age_group)),
     voice: stringField(stored, 'voice', stringField(metadata, 'voice', fallback.voice)),
     voice_reference_id: Number(storedVoiceId) > 0 ? Number(storedVoiceId) : null,
+    voice_description: stringField(stored, 'voice_description', stringField(metadata, 'voice_description', fallback.voice_description)),
     reference_layout: stringField(stored, 'reference_layout', stringField(metadata, 'reference_layout', fallback.reference_layout)),
     generation_reference_images: Array.isArray(stored.generation_reference_images)
       ? stored.generation_reference_images.filter((item): item is string => typeof item === 'string' && Boolean(item))
@@ -517,6 +523,7 @@ function applyFormSnapshot(snapshot: AssetEditorFormSnapshot, isVariant: boolean
   age.value = snapshot.age_group
   voice.value = snapshot.voice
   voiceReferenceId.value = snapshot.voice_reference_id
+  voiceDescription.value = snapshot.voice_description
   referenceLayout.value = snapshot.reference_layout
   pendingReferenceImages.value.forEach(item => URL.revokeObjectURL(item.previewUrl))
   pendingReferenceImages.value = []
@@ -1198,6 +1205,7 @@ async function autoDesignVoice() {
       variant_id: variant?.id ?? null,
       expected_voice_reference_id: expectedVoiceReferenceId,
       expected_voice: expectedVoice,
+      voice_description: voiceDescription.value.trim() || null,
     })
     if (props.asset?.id === asset.id) {
       if (variant) {
@@ -1211,11 +1219,13 @@ async function autoDesignVoice() {
         emit('saved', updated)
       }
       const nextVoice = { voice: data.reference.nickname, voice_reference_id: data.reference.id }
+      const nextDescription = typeof data.metadata?.voice_description === 'string' ? data.metadata.voice_description : ''
       const snapshot = formDrafts.get(key)
-      if (snapshot) formDrafts.set(key, { ...snapshot, ...nextVoice })
+      if (snapshot) formDrafts.set(key, { ...snapshot, ...nextVoice, voice_description: nextDescription })
       if (props.open && activeFormKey() === key) {
         voice.value = nextVoice.voice
         voiceReferenceId.value = nextVoice.voice_reference_id
+        voiceDescription.value = nextDescription || voiceDescription.value
       }
     }
     notice.success(tr('已为“{p0}”设计并绑定音色', { p0: targetName }))
@@ -1661,6 +1671,10 @@ onUnmounted(() => {
                 </AppButton>
               </div>
               <span class="asset-voice-status" role="status">{{ autoDesigning ? tr('正在设计音色…') : '' }}</span>
+              <label v-if="asset && !variantDraft?.is_new" class="asset-field asset-voice-description-field">
+                <span>{{ tr('音色描述（可编辑，调整后重新 AI 设计生效）') }}</span>
+                <textarea v-model="voiceDescription" rows="3" maxlength="400" :disabled="autoDesigning" :placeholder="tr('点击「AI 设计音色」自动生成，或在此输入后重新设计')" />
+              </label>
             </div>
           </div>
 

@@ -79,7 +79,9 @@
     "已为“{p0}”设计并绑定音色": "Voice designed and bound for “{p0}”",
     "音色设计失败，请重试": "Voice design failed. Try again.",
     "正在设计音色…": "Designing voice…",
-    "AI 设计音色": "AI voice design"
+    "AI 设计音色": "AI voice design",
+    "音色描述（可编辑，调整后重新 AI 设计生效）": "Voice description (editable; re-run AI voice design to apply)",
+    "点击「AI 设计音色」自动生成，或在此输入后重新设计": "Click “AI voice design” to generate, or edit here and re-run design"
   },
   "model_reasoning": {
     "本地设置": "Local settings",

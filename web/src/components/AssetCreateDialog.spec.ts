@@ -483,6 +483,7 @@ it.each(['light', 'dark'])('confirms replacement and binds the original form aft
   await flushPromises()
   expect(api.autoDesignVoice).toHaveBeenCalledWith({
     asset_id: asset.id, variant_id: variant.id, expected_voice_reference_id: 20, expected_voice: '原青年音色',
+    voice_description: null,
   })
   expect(trigger.attributes('aria-busy')).toBe('true')
   expect(trigger.attributes('disabled')).toBeDefined()
@@ -495,6 +496,32 @@ it.each(['light', 'dark'])('confirms replacement and binds the original form aft
   expect(wrapper.get('.asset-voice-choice').text()).toBe('新青年音色')
   wrapper.unmount()
   delete document.documentElement.dataset.appTheme
+})
+
+it('edits the voice description and sends it when redesigning a voice', async () => {
+  const asset = { ...editedAsset, metadata: { voice: '基础音色', voice_reference_id: 19, voice_description: '低沉厚重的男声' } }
+  const newVoice = { id: 26, nickname: '新设计音色', gender: '男', audio_url: '/media/design2.wav',
+    avatar_url: '', asset_id: 'voice-26', is_active: true, created_at: '', updated_at: '' }
+  vi.mocked(appConfirm).mockResolvedValueOnce(true)
+  vi.mocked(api.autoDesignVoice).mockResolvedValueOnce({ code: 0, message: 'ok', data: {
+    reference: newVoice,
+    metadata: { voice: newVoice.nickname, voice_reference_id: newVoice.id,
+      voice_description: '沙哑低音，语速偏慢', voice_sample_text: '我们再试一次。' },
+  } })
+  const wrapper = await mountVoiceEditor(asset)
+  const textarea = wrapper.get('.asset-voice-description-field textarea')
+  expect((textarea.element as HTMLTextAreaElement).value).toBe('低沉厚重的男声')
+  await textarea.setValue('沙哑低音，语速更慢')
+  await wrapper.get('.asset-voice-design').trigger('click')
+  await flushPromises()
+  expect(api.autoDesignVoice).toHaveBeenLastCalledWith({
+    asset_id: asset.id, variant_id: null, expected_voice_reference_id: 19, expected_voice: '基础音色',
+    voice_description: '沙哑低音，语速更慢',
+  })
+  const refreshed = wrapper.get('.asset-voice-description-field textarea')
+  expect((refreshed.element as HTMLTextAreaElement).value).toBe('沙哑低音，语速偏慢')
+  expect(wrapper.get('.asset-voice-choice').text()).toBe('新设计音色')
+  wrapper.unmount()
 })
 
 it('hides voice design for an unsaved character form and keeps voice selection available after an error', async () => {

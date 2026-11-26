@@ -483,6 +483,7 @@ export const api = {
     variant_id: number | null
     expected_voice_reference_id: number | null
     expected_voice: string
+    voice_description?: string | null
   }) => request<SingleResponse<{ reference: AudioReference; metadata: Record<string, unknown> }>>('/media-library/audio-references/auto-design', {
     method: 'POST', body: JSON.stringify(payload),
   }),

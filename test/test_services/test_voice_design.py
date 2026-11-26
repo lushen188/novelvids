@@ -141,6 +141,49 @@ async def test_designs_variant_uses_real_wav_and_bills_both_calls(monkeypatch, t
 
 
 @pytest.mark.asyncio
+async def test_manual_description_skips_text_model_and_bills_voice_only(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "MEDIA_PATH", str(tmp_path))
+    monkeypatch.setattr(voice_design, "oss", SimpleNamespace(enabled=False))
+    ctx, team = await make_context(monkeypatch, "manual")
+    project, asset, form = await make_project(team.id)
+    await config("voice", AiTaskTypeEnum.voice_design, protocol="mimo_voice_design", pricing=VOICE_PRICE)
+    # 本机无 ffprobe 时跳过真实 WAV 探测（探测逻辑由上游用例覆盖）
+    monkeypatch.setattr(voice_design, "_validate_audio_file", AsyncMock(return_value=3.0))
+    data = wav()
+    calls = []
+
+    def respond(request):
+        calls.append(request)
+        if request.url.host == "text.example":
+            return httpx.Response(500)  # 手动路径不应触达文本模型
+        assert request.headers["api-key"] == "provider-test"
+        assert request.url.path == "/v1/chat/completions"
+        body = json.loads(request.content)
+        assert body["messages"][0] == {"role": "user", "content": "低沉沙哑，听感 40 岁上下"}
+        assert body["messages"][1]["role"] == "assistant"
+        assert body["messages"][1]["content"]
+        return httpx.Response(200, json=voice_response(data))
+
+    mock_provider(monkeypatch, respond)
+    reference, metadata = await voice_design.auto_design_voice_for_asset(
+        AudioReferenceAutoDesignIn(asset_id=asset.id, variant_id=form.id, expected_voice_reference_id=None,
+                                   voice_description="低沉沙哑，听感 40 岁上下"), ctx,
+    )
+    await form.refresh_from_db()
+    await team.refresh_from_db()
+    assert metadata["voice_description"] == "低沉沙哑，听感 40 岁上下"
+    assert metadata["voice_sample_text"]
+    assert metadata["editor_form"]["voice_description"] == "低沉沙哑，听感 40 岁上下"
+    assert metadata["editor_form"]["voice_sample_text"] == metadata["voice_sample_text"]
+    assert reference.gender == "男" and reference.duration == 3
+    assert len(calls) == 1
+    usage = {row.billing_type: row for row in await ModelUsageRecord.filter(novel_id=project.id)}
+    assert set(usage) == {"voice_design"}
+    assert usage["voice_design"].usage == {"seconds": 3}
+    assert team.balance == Decimal("9.7")
+
+
+@pytest.mark.asyncio
 async def test_voice_change_during_upload_keeps_latest_binding_and_cleans_sample(monkeypatch, tmp_path):
     ctx, team = await make_context(monkeypatch, "race")
     project, asset, form = await make_project(team.id)

@@ -55,6 +55,8 @@ class AudioReferenceAutoDesignIn(BaseModel):
     variant_id: int | None = Field(default=None, ge=1)
     expected_voice_reference_id: int | None = Field(ge=1)
     expected_voice: str = Field(default="", max_length=100)
+    # 二开：允许前端携带用户编辑过的音色描述直接重掷，跳过文本模型生成
+    voice_description: str | None = Field(default=None, max_length=400)
 
 
 class AudioReferenceAutoDesignOut(BaseModel):

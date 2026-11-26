@@ -146,13 +146,29 @@ async def auto_design_voice_for_asset(payload: AudioReferenceAutoDesignIn, ctx: 
         validate_voice_design_pricing(voice_config.pricing)
     except ValueError:
         raise HTTPException(409, msg("请先配置音色设计模型、密钥和价格")) from None
-    text_config = await ai_model_config_controller.get_active_with_legacy_fallback(
-        AiTaskTypeEnum.project_analysis.value, AiTaskTypeEnum.extraction.value, team_id=project.team_id,
-    )
-    language = await general_config_controller.get_prompt_language()
     user_id = ctx.user.id if ctx.user else None
     facts = target.facts(project)
-    draft = await _describe_voice(text_config, project=project, user_id=user_id, facts=facts, language=language)
+    language = await general_config_controller.get_prompt_language()
+    description = (payload.voice_description or "").strip()
+    if description:
+        # 二开：前端携带用户编辑过的描述，跳过文本模型直接按描述合成
+        stored = metadata_dict(target.row.metadata)
+        sample_text = (
+            stored.get("voice_sample_text")
+            if isinstance(stored.get("voice_sample_text"), str) and stored["voice_sample_text"].strip()
+            else ("This is our last chance — no more hesitation." if language == "en"
+                  else "这是我们最后一次机会，别再犹豫了。")
+        )
+        draft = VoiceDesignDraft(
+            voice_description=description,
+            sample_text=sample_text,
+            gender={"男": "male", "女": "female"}.get(facts.get("gender"), "unspecified"),
+        )
+    else:
+        text_config = await ai_model_config_controller.get_active_with_legacy_fallback(
+            AiTaskTypeEnum.project_analysis.value, AiTaskTypeEnum.extraction.value, team_id=project.team_id,
+        )
+        draft = await _describe_voice(text_config, project=project, user_id=user_id, facts=facts, language=language)
     request = VoiceDesignRequest(model=voice_config.model, audio=VoiceAudioOptions(), messages=[
         VoiceMessage(role="user", content=draft.voice_description),
         VoiceMessage(role="assistant", content=draft.sample_text),
@@ -195,6 +211,14 @@ async def _bind_sample(payload, ctx, project, path, duration, draft):
                 else ctx.user.id if ctx.user else None,
             )
             target.row.metadata = target.binding_metadata(reference)
+            # 二开：持久化音色描述与试听台词，供前端回显与手动重掷兜底
+            target.row.metadata["voice_description"] = draft.voice_description
+            target.row.metadata["voice_sample_text"] = draft.sample_text
+            if target.variant:
+                editor_form = metadata_dict(target.row.metadata.get("editor_form"))
+                editor_form.update(voice_description=draft.voice_description,
+                                   voice_sample_text=draft.sample_text)
+                target.row.metadata["editor_form"] = editor_form
             await target.row.save(update_fields=["metadata", "updated_at"])
         return reference, target.row.metadata
     except BaseException:
